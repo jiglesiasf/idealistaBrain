@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Idealista Brain</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <p class="eyebrow">Idealista Brain</p>
+            <h1>Rental Intelligence</h1>
+          </div>
+        </div>
+        <p class="hero-copy">Analisis de compra para alquilar, con comparables y ranking de oportunidades.</p>
+      </header>
+
+      <div class="actions">
+        <button id="analyze-button" type="button">
+          <span class="button-icon">A</span>
+          <span class="button-copy">
+            <strong>Ficha</strong>
+            <small>Analizar</small>
+          </span>
+        </button>
+        <button id="comparables-button" type="button">
+          <span class="button-icon">C</span>
+          <span class="button-copy">
+            <strong>Rentas</strong>
+            <small>Comparables</small>
+          </span>
+        </button>
+        <button id="zone-scan-button" type="button">
+          <span class="button-icon">Z</span>
+          <span class="button-copy">
+            <strong>Zona</strong>
+            <small>Escanear</small>
+          </span>
+        </button>
+        <button id="copy-button" type="button" class="ghost">
+          <span class="button-icon">J</span>
+          <span class="button-copy">
+            <strong>JSON</strong>
+            <small>Copiar</small>
+          </span>
+        </button>
+      </div>
+
+      <p id="status" class="status" aria-live="polite"></p>
+
+      <section id="result" class="card hidden">
+        <div class="intro section-first">
+          <div class="intro-copy">
+            <span class="label">Activo</span>
+            <p id="listing-title" class="value strong"></p>
+            <p id="listing-meta" class="value meta"></p>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <span class="kpi-label">Compra</span>
+            <strong id="summary-price" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Alquiler</span>
+            <strong id="summary-rent" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Cash to cash</span>
+            <strong id="summary-c2c" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Comparables</span>
+            <strong id="summary-comps" class="kpi-value">-</strong>
+          </article>
+        </div>
+
+        <div class="section tone-strong">
+          <span class="label">Rentabilidad</span>
+          <ul id="profitability" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Renta estimada</span>
+          <ul id="estimate" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Ficha normalizada</span>
+          <ul id="target-asset" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Ubicacion</span>
+          <p id="location-name" class="value strong"></p>
+          <p id="location-confidence" class="value meta"></p>
+        </div>
+
+        <div class="section">
+          <span class="label">Comparables</span>
+          <ul id="search-strategy" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Criterios</span>
+          <ul id="comparable-rules" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Guardrails</span>
+          <ul id="guardrails" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Breadcrumbs</span>
+          <ul id="breadcrumbs" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Coordenadas</span>
+          <p id="coordinates" class="value"></p>
+        </div>
+
+        <div class="section">
+          <span class="label">Links</span>
+          <ul id="candidate-links" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Validos</span>
+          <ul id="comparables" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Descartes</span>
+          <ul id="discarded" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Traza de busqueda</span>
+          <ul id="search-trace" class="list"></ul>
+        </div>
+      </section>
+
+      <section id="zone-result" class="card hidden">
+        <div class="intro section-first">
+          <div class="intro-copy">
+            <span class="label">Escaner de zona</span>
+            <p class="value strong">Ranking de oportunidades</p>
+            <p class="value meta">Ordenado por ROI cash to cash.</p>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <span class="kpi-label">Detectados</span>
+            <strong id="zone-detected" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Analizados</span>
+            <strong id="zone-analyzed" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Rankeados</span>
+            <strong id="zone-ranked" class="kpi-value">-</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Mejor C2C</span>
+            <strong id="zone-best-c2c" class="kpi-value">-</strong>
+          </article>
+        </div>
+
+        <div class="section">
+          <span class="label">Resumen</span>
+          <ul id="zone-summary" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Ranking</span>
+          <ul id="zone-opportunities" class="list"></ul>
+        </div>
+
+        <div class="section">
+          <span class="label">Incidencias</span>
+          <ul id="zone-failures" class="list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

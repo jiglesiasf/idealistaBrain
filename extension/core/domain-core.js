@@ -1,0 +1,551 @@
+// Generated from src/core/domain-core.cjs.
+// Run `npm run sync:core` after editing the canonical source.
+
+(function (root, factory) {
+  const api = factory();
+
+  if (typeof module === "object" && module.exports) {
+    module.exports = api;
+  }
+
+  root.IdealistaBrainCore = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const TARGET_COMPARABLES = 10;
+  const MAX_CANDIDATES_PER_SCOPE_URL = 36;
+  const COMPARABLE_AREA_TOLERANCE = 0.7;
+  const COMPARABLE_ROOMS_TOLERANCE = 2;
+  const DEFAULT_PROFITABILITY_ASSUMPTIONS = Object.freeze({
+    buyerCashContributionRatio: 0.3,
+    downPaymentRatio: 0.2,
+    acquisitionCostRatio: 0.1,
+    loanToValueRatio: 0.8,
+    fixedMortgageInterestRate: 0.025,
+    mortgageTermYears: 25,
+    vacancyRatio: 0.05,
+    managementRatio: 0.08,
+    maintenanceRatio: 0.05,
+    localTaxesAndCommunityRatio: 0.04,
+    insuranceAndIncidentsRatio: 0.02,
+  });
+  const ROI_SORT_OPTIONS = Object.freeze({
+    cashOnCashRoi: "ROI cash to cash",
+    cashOnCashNetRoi: "ROI cash to cash neto",
+    grossRoi: "ROI bruto",
+    netRoi: "ROI neto",
+  });
+
+  function normalizeText(value) {
+    return (value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function slugify(value) {
+    return normalizeText(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function normalizeForCompare(value) {
+    return slugify(value || "");
+  }
+
+  function getPropertyFamily(type) {
+    const normalized = normalizeForCompare(type || "");
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.includes("casa") || normalized.includes("chalet")) {
+      return "house";
+    }
+
+    if (
+      normalized.includes("piso") ||
+      normalized.includes("apartamento") ||
+      normalized.includes("atico") ||
+      normalized.includes("duplex") ||
+      normalized.includes("estudio") ||
+      normalized.includes("loft")
+    ) {
+      return "flat";
+    }
+
+    return normalized;
+  }
+
+  function isWithinRelativeRange(candidateValue, targetValue, tolerance) {
+    if (!Number.isFinite(candidateValue) || !Number.isFinite(targetValue) || targetValue === 0) {
+      return false;
+    }
+
+    const ratio = Math.abs(candidateValue - targetValue) / targetValue;
+    return ratio <= tolerance;
+  }
+
+  function percentile(sortedValues, q) {
+    if (sortedValues.length === 0) {
+      return null;
+    }
+
+    if (sortedValues.length === 1) {
+      return sortedValues[0];
+    }
+
+    const index = (sortedValues.length - 1) * q;
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+
+    if (lower === upper) {
+      return sortedValues[lower];
+    }
+
+    const weight = index - lower;
+    return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+  }
+
+  function roundMoney(value) {
+    return Math.round(value);
+  }
+
+  function buildSearchStrategy(targetAsset) {
+    const zone = targetAsset.zone || targetAsset.neighborhood || targetAsset.district || null;
+    const municipality = targetAsset.municipality || null;
+
+    return {
+      minimumValidComparables: TARGET_COMPARABLES,
+      keepCollectingBeyondMinimum: true,
+      scopes: [
+        {
+          id: "zone",
+          order: 1,
+          label: "misma zona",
+          active: Boolean(zone),
+          areaName: zone,
+          municipality,
+          stopWhenValidComparablesAtLeast: TARGET_COMPARABLES,
+        },
+        {
+          id: "municipality",
+          order: 2,
+          label: "mismo municipio",
+          active: Boolean(municipality),
+          areaName: municipality,
+          municipality,
+          activateWhenValidComparablesBelow: TARGET_COMPARABLES,
+        },
+      ],
+      doNotExpandBeyondMunicipality: true,
+    };
+  }
+
+  function buildComparableRules() {
+    return {
+      hardFilters: [
+        "mismo municipio",
+        "misma tipologia",
+        "excluir 404",
+        "excluir alquiler temporal",
+        "excluir habitaciones",
+        "excluir locales, garajes y trasteros",
+      ],
+      softFilters: [
+        "priorizar misma zona",
+        "habitaciones iguales o +/-2",
+        "superficie dentro de +/-70%",
+        "estado parecido cuando este disponible",
+      ],
+      scoringWeights: {
+        sameZone: 40,
+        sameMunicipality: 25,
+        similarRooms: 15,
+        similarArea: 15,
+        similarCondition: 5,
+      },
+    };
+  }
+
+  function buildGuardrails(location, searchStrategy, comparableRules) {
+    return {
+      knownProvince: Boolean(location.province),
+      detectedProvince: location.province || null,
+      mustMatchProvince: false,
+      mustMatchCity: Boolean(location.city),
+      preferredDistrict: location.district || null,
+      preferredNeighborhood: location.neighborhood || null,
+      rejectCrossProvinceResults: false,
+      rejectCrossCityResults: Boolean(location.city),
+      minimumValidComparables: searchStrategy.minimumValidComparables,
+      searchOrder: searchStrategy.scopes.filter((scope) => scope.active).map((scope) => scope.label),
+      hardFilters: comparableRules.hardFilters,
+    };
+  }
+
+  function buildComparableScore(subjectAsset, comparableAsset, scopeId) {
+    let score = 0;
+
+    if (scopeId === "zone") {
+      score += 40;
+    } else {
+      score += 20;
+    }
+
+    if (subjectAsset.rooms && comparableAsset.rooms && Math.abs(subjectAsset.rooms - comparableAsset.rooms) === 0) {
+      score += 15;
+    } else if (
+      subjectAsset.rooms &&
+      comparableAsset.rooms &&
+      Math.abs(subjectAsset.rooms - comparableAsset.rooms) === 1
+    ) {
+      score += 10;
+    } else if (
+      subjectAsset.rooms &&
+      comparableAsset.rooms &&
+      Math.abs(subjectAsset.rooms - comparableAsset.rooms) === 2
+    ) {
+      score += 5;
+    }
+
+    if (
+      subjectAsset.areaM2 &&
+      comparableAsset.areaM2 &&
+      isWithinRelativeRange(comparableAsset.areaM2, subjectAsset.areaM2, 0.1)
+    ) {
+      score += 15;
+    } else if (
+      subjectAsset.areaM2 &&
+      comparableAsset.areaM2 &&
+      isWithinRelativeRange(comparableAsset.areaM2, subjectAsset.areaM2, COMPARABLE_AREA_TOLERANCE)
+    ) {
+      score += 8;
+    }
+
+    if (
+      subjectAsset.state &&
+      comparableAsset.state &&
+      normalizeForCompare(subjectAsset.state) === normalizeForCompare(comparableAsset.state)
+    ) {
+      score += 5;
+    }
+
+    return score;
+  }
+
+  function getComparableRejectionReason(subject, candidateContext, scopeId) {
+    const subjectAsset = subject.targetAsset || {};
+    const candidateAsset = candidateContext.targetAsset || {};
+    const candidateText = normalizeText(
+      `${candidateContext.page?.title || ""} ${candidateContext.rawSignals?.pageTextSample || ""}`
+    ).toLowerCase();
+
+    if (candidateAsset.operation !== "rent") {
+      return "No es una ficha de alquiler.";
+    }
+
+    if (/\btemporada\b|\balquiler temporal\b/i.test(candidateText)) {
+      return "Alquiler temporal.";
+    }
+
+    if (/\bhabitaci[oó]n\b/i.test(candidateText)) {
+      return "Habitacion suelta.";
+    }
+
+    if (/\blocal\b|\bgaraje\b|\btrastero\b/i.test(candidateText)) {
+      return "Activo no residencial comparable.";
+    }
+
+    if (
+      subjectAsset.municipality &&
+      candidateAsset.municipality &&
+      normalizeForCompare(subjectAsset.municipality) !== normalizeForCompare(candidateAsset.municipality)
+    ) {
+      return "Municipio distinto.";
+    }
+
+    if (scopeId === "zone" && subjectAsset.zone && candidateAsset.zone) {
+      const subjectZone = normalizeForCompare(subjectAsset.zone);
+      const candidateZone = normalizeForCompare(candidateAsset.zone);
+
+      if (!candidateZone.includes(subjectZone) && !subjectZone.includes(candidateZone)) {
+        return "Fuera de la zona base.";
+      }
+    }
+
+    const subjectFamily = getPropertyFamily(subjectAsset.propertyType);
+    const candidateFamily = getPropertyFamily(candidateAsset.propertyType);
+
+    if (subjectFamily && candidateFamily && subjectFamily !== candidateFamily) {
+      return "Tipologia distinta.";
+    }
+
+    if (
+      Number.isFinite(subjectAsset.rooms) &&
+      Number.isFinite(candidateAsset.rooms) &&
+      Math.abs(subjectAsset.rooms - candidateAsset.rooms) > COMPARABLE_ROOMS_TOLERANCE
+    ) {
+      return "Habitaciones fuera de +/-2.";
+    }
+
+    if (
+      Number.isFinite(subjectAsset.areaM2) &&
+      Number.isFinite(candidateAsset.areaM2) &&
+      !isWithinRelativeRange(candidateAsset.areaM2, subjectAsset.areaM2, COMPARABLE_AREA_TOLERANCE)
+    ) {
+      return "Superficie fuera de +/-70%.";
+    }
+
+    if (!candidateAsset.priceEur) {
+      return "No se ha detectado renta mensual.";
+    }
+
+    return null;
+  }
+
+  function buildComparableRecord(subject, context, candidate, scopeId) {
+    const asset = context.targetAsset || {};
+    const distanceScore = buildComparableScore(subject.targetAsset || {}, asset, scopeId);
+
+    return {
+      listingId: asset.listingId,
+      scope: scopeId,
+      url: context.page?.canonicalUrl,
+      title: context.page?.title,
+      propertyType: asset.propertyType,
+      priceEur: asset.priceEur,
+      areaM2: asset.areaM2,
+      rentPerM2: asset.priceEur && asset.areaM2 ? Number((asset.priceEur / asset.areaM2).toFixed(2)) : null,
+      rooms: asset.rooms,
+      bathrooms: asset.bathrooms,
+      zone: asset.zone,
+      municipality: asset.municipality,
+      province: asset.province,
+      state: asset.state,
+      score: distanceScore,
+      sourceSearchUrl: candidate.sourceSearchUrl,
+    };
+  }
+
+  function buildRentEstimate(subject, comparables) {
+    const pricedComparables = comparables.filter((item) => Number.isFinite(item.priceEur));
+
+    if (pricedComparables.length === 0) {
+      return {
+        confidence: "low",
+        comparablesUsed: 0,
+        monthlyRentEur: null,
+        lowEur: null,
+        highEur: null,
+        method: "Sin comparables validos con precio.",
+      };
+    }
+
+    const perM2Comparables = pricedComparables.filter((item) => Number.isFinite(item.rentPerM2));
+    const subjectArea = subject.targetAsset?.areaM2;
+
+    if (perM2Comparables.length >= 3 && Number.isFinite(subjectArea)) {
+      const rentsPerM2 = perM2Comparables.map((item) => item.rentPerM2).sort((left, right) => left - right);
+      const basePerM2 = percentile(rentsPerM2, 0.5);
+      const lowPerM2 = percentile(rentsPerM2, 0.25);
+      const highPerM2 = percentile(rentsPerM2, 0.75);
+
+      return {
+        confidence: pricedComparables.length >= TARGET_COMPARABLES ? "high" : "medium",
+        comparablesUsed: pricedComparables.length,
+        monthlyRentEur: roundMoney(basePerM2 * subjectArea),
+        lowEur: roundMoney(lowPerM2 * subjectArea),
+        highEur: roundMoney(highPerM2 * subjectArea),
+        method: "Mediana de €/m2 de comparables validos.",
+      };
+    }
+
+    const rents = pricedComparables.map((item) => item.priceEur).sort((left, right) => left - right);
+
+    return {
+      confidence: pricedComparables.length >= TARGET_COMPARABLES ? "medium" : "low",
+      comparablesUsed: pricedComparables.length,
+      monthlyRentEur: roundMoney(percentile(rents, 0.5)),
+      lowEur: roundMoney(percentile(rents, 0.25)),
+      highEur: roundMoney(percentile(rents, 0.75)),
+      method: "Mediana directa de rentas mensuales.",
+    };
+  }
+
+  function calculateFixedMonthlyMortgagePayment(principalEur, annualRate, termYears) {
+    if (!Number.isFinite(principalEur) || principalEur <= 0) {
+      return null;
+    }
+
+    const totalPayments = Math.round(termYears * 12);
+
+    if (!Number.isFinite(totalPayments) || totalPayments <= 0) {
+      return null;
+    }
+
+    if (!Number.isFinite(annualRate) || annualRate <= 0) {
+      return principalEur / totalPayments;
+    }
+
+    const monthlyRate = annualRate / 12;
+    const factor = Math.pow(1 + monthlyRate, totalPayments);
+
+    return (principalEur * monthlyRate * factor) / (factor - 1);
+  }
+
+  function buildProfitabilityEstimate(subject, rentEstimate, overrides) {
+    const assumptions = {
+      ...DEFAULT_PROFITABILITY_ASSUMPTIONS,
+      ...(overrides || {}),
+    };
+    const purchasePriceEur = subject?.targetAsset?.priceEur;
+    const monthlyRentEur = rentEstimate?.monthlyRentEur;
+
+    if (!Number.isFinite(purchasePriceEur) || !Number.isFinite(monthlyRentEur)) {
+      return {
+        ready: false,
+        assumptions,
+        notes: [
+          "Hace falta precio de compra y estimacion de alquiler para calcular rentabilidad.",
+          "El ROI cash to cash neto usa una hipoteca fija simplificada, no una oferta bancaria real.",
+        ],
+      };
+    }
+
+    const annualGrossRentEur = monthlyRentEur * 12;
+    const acquisitionCostEur = roundMoney(purchasePriceEur * assumptions.acquisitionCostRatio);
+    const totalAcquisitionCostEur = purchasePriceEur + acquisitionCostEur;
+    const downPaymentEur = roundMoney(purchasePriceEur * assumptions.downPaymentRatio);
+    const financedPrincipalEur = roundMoney(purchasePriceEur * assumptions.loanToValueRatio);
+    const cashInvestedEur = downPaymentEur + acquisitionCostEur;
+    const monthlyMortgagePaymentEur = roundMoney(
+      calculateFixedMonthlyMortgagePayment(
+        financedPrincipalEur,
+        assumptions.fixedMortgageInterestRate,
+        assumptions.mortgageTermYears
+      )
+    );
+    const annualMortgageCostEur = monthlyMortgagePaymentEur * 12;
+
+    const vacancyCostEur = roundMoney(annualGrossRentEur * assumptions.vacancyRatio);
+    const managementCostEur = roundMoney(annualGrossRentEur * assumptions.managementRatio);
+    const maintenanceCostEur = roundMoney(annualGrossRentEur * assumptions.maintenanceRatio);
+    const localTaxesAndCommunityCostEur = roundMoney(
+      annualGrossRentEur * assumptions.localTaxesAndCommunityRatio
+    );
+    const insuranceAndIncidentsCostEur = roundMoney(annualGrossRentEur * assumptions.insuranceAndIncidentsRatio);
+    const totalOperatingCostsEur =
+      vacancyCostEur +
+      managementCostEur +
+      maintenanceCostEur +
+      localTaxesAndCommunityCostEur +
+      insuranceAndIncidentsCostEur;
+    const annualNetRentEur = annualGrossRentEur - totalOperatingCostsEur;
+    const annualPostDebtCashFlowEur = annualNetRentEur - annualMortgageCostEur;
+
+    return {
+      ready: true,
+      assumptions,
+      inputs: {
+        purchasePriceEur,
+        monthlyRentEur,
+        annualGrossRentEur,
+        acquisitionCostEur,
+        totalAcquisitionCostEur,
+        downPaymentEur,
+        equityContributionEur: downPaymentEur,
+        financedPrincipalEur,
+        cashInvestedEur,
+      },
+      financing: {
+        fixedMortgageInterestRate: assumptions.fixedMortgageInterestRate,
+        mortgageTermYears: assumptions.mortgageTermYears,
+        monthlyMortgagePaymentEur,
+        annualMortgageCostEur,
+        annualPostDebtCashFlowEur,
+      },
+      operatingCosts: {
+        vacancyCostEur,
+        managementCostEur,
+        maintenanceCostEur,
+        localTaxesAndCommunityCostEur,
+        insuranceAndIncidentsCostEur,
+        totalOperatingCostsEur,
+        annualNetRentEur,
+      },
+      metrics: {
+        cashOnCashRoi: cashInvestedEur > 0 ? annualNetRentEur / cashInvestedEur : null,
+        cashOnCashNetRoi: cashInvestedEur > 0 ? annualPostDebtCashFlowEur / cashInvestedEur : null,
+        grossRoi: totalAcquisitionCostEur > 0 ? annualGrossRentEur / totalAcquisitionCostEur : null,
+        netRoi: totalAcquisitionCostEur > 0 ? annualNetRentEur / totalAcquisitionCostEur : null,
+      },
+      notes: [
+        "ROI cash to cash: flujo anual neto sobre caja aportada por el comprador.",
+        "ROI cash to cash neto: flujo anual tras hipoteca sobre caja aportada.",
+        "ROI bruto: renta anual bruta sobre coste total estimado de adquisicion.",
+        "ROI neto: renta anual neta tras gastos operativos sobre coste total estimado de adquisicion.",
+        "Todavia no se descuenta reforma inicial, fiscalidad real de compra ni condiciones bancarias personalizadas.",
+      ],
+    };
+  }
+
+  function buildZoneOpportunityFromAnalysis(entry) {
+    const analysis = entry.analysis || {};
+    const subject = analysis.subject || {};
+    const asset = subject.targetAsset || {};
+    const profitability = analysis.profitability || {};
+    const estimate = analysis.estimate || {};
+    const metrics = profitability.metrics || {};
+
+    return {
+      listingId: subject.page?.listingId || entry.sourceListing?.listingId,
+      title: subject.page?.title || entry.sourceListing?.title,
+      url: subject.page?.canonicalUrl || entry.sourceListing?.url,
+      zone: asset.zone || null,
+      municipality: asset.municipality || null,
+      priceEur: asset.priceEur || null,
+      areaM2: asset.areaM2 || null,
+      rooms: asset.rooms || null,
+      estimatedRentEur: estimate.monthlyRentEur || null,
+      comparablesUsed: estimate.comparablesUsed || 0,
+      estimateConfidence: estimate.confidence || "low",
+      cashOnCashRoi: metrics.cashOnCashRoi ?? null,
+      cashOnCashNetRoi: metrics.cashOnCashNetRoi ?? null,
+      grossRoi: metrics.grossRoi ?? null,
+      netRoi: metrics.netRoi ?? null,
+      profitabilityReady: Boolean(profitability.ready),
+    };
+  }
+
+  function getOpportunityMetricValue(opportunity, metricKey) {
+    const value = opportunity?.[metricKey];
+    return Number.isFinite(value) ? value : -Infinity;
+  }
+
+  function sortZoneOpportunities(opportunities, metricKey) {
+    const selectedMetric = ROI_SORT_OPTIONS[metricKey] ? metricKey : "cashOnCashRoi";
+
+    return [...(opportunities || [])].sort((left, right) => {
+      const leftValue = getOpportunityMetricValue(left, selectedMetric);
+      const rightValue = getOpportunityMetricValue(right, selectedMetric);
+      return rightValue - leftValue;
+    });
+  }
+
+  return {
+    TARGET_COMPARABLES,
+    MAX_CANDIDATES_PER_SCOPE_URL,
+    COMPARABLE_AREA_TOLERANCE,
+    COMPARABLE_ROOMS_TOLERANCE,
+    DEFAULT_PROFITABILITY_ASSUMPTIONS,
+    ROI_SORT_OPTIONS,
+    buildSearchStrategy,
+    buildComparableRules,
+    buildGuardrails,
+    getComparableRejectionReason,
+    buildComparableRecord,
+    buildRentEstimate,
+    buildProfitabilityEstimate,
+    buildZoneOpportunityFromAnalysis,
+    sortZoneOpportunities,
+  };
+});

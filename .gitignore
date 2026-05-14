@@ -1,0 +1,12 @@
+node_modules/
+output/
+.next/
+.DS_Store
+tsconfig.tsbuildinfo
+extension.pem
+extension.crx
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
