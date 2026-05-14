@@ -57,6 +57,9 @@ export default async function RootLayout({
               <Link href="/dashboard" className="nav-link">
                 Historial
               </Link>
+              <Link href="/runner" className="nav-link">
+                Runner
+              </Link>
 
               {userEmail ? (
                 <>
