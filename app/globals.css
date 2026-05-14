@@ -783,6 +783,72 @@ button {
   font-size: 0.68rem;
 }
 
+.alert-radar-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.alert-radar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.alert-radar-row.ready {
+  border-color: rgba(20, 128, 74, 0.14);
+  background: rgba(20, 128, 74, 0.04);
+}
+
+.alert-radar-copy {
+  min-width: 0;
+}
+
+.alert-radar-copy strong {
+  display: block;
+  font-size: 0.96rem;
+  letter-spacing: -0.02em;
+}
+
+.alert-radar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.alert-radar-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.alert-radar-status {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.alert-radar-roi-highlight {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(20, 128, 74, 0.12);
+  color: #11643a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 .dashboard-footnote {
   margin: 12px 0 0;
 }
@@ -1577,7 +1643,8 @@ button {
 
   .job-row,
   .card-header,
-  .failure-row {
+  .failure-row,
+  .alert-radar-row {
     flex-direction: column;
   }
 

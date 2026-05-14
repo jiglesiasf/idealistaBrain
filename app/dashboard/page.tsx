@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
+import { AlertRadar } from "@/components/alert-radar";
 import { RecentJobs } from "@/components/recent-jobs";
+import type { AlertRadarSummary } from "@/lib/alerts/contracts";
+import { getAlertRadarSummary } from "@/lib/alerts/service";
 import { listUserJobs } from "@/lib/jobs/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,11 +18,19 @@ export default async function DashboardPage() {
 
   let jobs = [] as Awaited<ReturnType<typeof listUserJobs>>;
   let jobsLoadError: string | null = null;
+  let radarLoadError: string | null = null;
+  let radarSummary: AlertRadarSummary = getEmptyRadarSummary();
 
   try {
     jobs = await listUserJobs(supabase, user.id, 30);
   } catch (error) {
     jobsLoadError = error instanceof Error ? error.message : "No he podido cargar el historial.";
+  }
+
+  try {
+    radarSummary = await getAlertRadarSummary(supabase, user.id);
+  } catch (error) {
+    radarLoadError = error instanceof Error ? error.message : "No he podido cargar el radar diario.";
   }
 
   const completedJobs = jobs.filter((job) => job.status === "completed").length;
@@ -29,6 +40,16 @@ export default async function DashboardPage() {
 
   return (
     <div className="stack">
+      {radarLoadError ? (
+        <section className="notice">
+          <strong>El radar diario todavía no ha cargado bien.</strong>
+          <p className="muted">
+            La cuenta está bien, pero no he podido montar la vista de nuevas oportunidades en esta sesión.
+          </p>
+          <p className="muted">{radarLoadError}</p>
+        </section>
+      ) : null}
+
       {jobsLoadError ? (
         <section className="notice">
           <strong>El historial todavía no ha cargado bien.</strong>
@@ -38,6 +59,8 @@ export default async function DashboardPage() {
           <p className="muted">{jobsLoadError}</p>
         </section>
       ) : null}
+
+      <AlertRadar summary={radarSummary} />
 
       <section className="card">
         <div className="card-header">
@@ -87,4 +110,13 @@ export default async function DashboardPage() {
       </section>
     </div>
   );
+}
+
+function getEmptyRadarSummary() {
+  return {
+    opportunities: [],
+    newListingsToday: 0,
+    searchesTriggeredToday: 0,
+    automaticJobsToday: 0,
+  };
 }

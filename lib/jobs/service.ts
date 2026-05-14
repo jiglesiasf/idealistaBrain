@@ -207,6 +207,105 @@ export async function createAutomatedListingJob(
   };
 }
 
+export async function claimNextAutomatedListingJob(userId: string, backendBaseUrl: string) {
+  const admin = createAdminClient();
+  const { data: queuedJobs, error: queuedJobsError } = await admin
+    .from("jobs")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "queued")
+    .eq("job_type", "listing-analysis")
+    .order("created_at", { ascending: true })
+    .limit(25)
+    .returns<RawJobRow[]>();
+
+  if (queuedJobsError) {
+    throw new Error(queuedJobsError.message);
+  }
+
+  let candidateJob: RawJobRow | null = null;
+
+  for (const job of queuedJobs ?? []) {
+    const { data: eventRow, error: eventError } = await admin
+      .from("job_events")
+      .select("id")
+      .eq("job_id", job.id)
+      .eq("event_type", "created-from-alert")
+      .maybeSingle<{ id: string }>();
+
+    if (eventError) {
+      throw new Error(eventError.message);
+    }
+
+    if (eventRow?.id) {
+      candidateJob = job;
+      break;
+    }
+  }
+
+  if (!candidateJob) {
+    return null;
+  }
+
+  const executionToken = createExecutionToken();
+  const executionTokenHash = hashExecutionToken(executionToken);
+  const executionTokenExpiresAt = new Date(Date.now() + COMPANION_TOKEN_TTL_MS).toISOString();
+
+  const { error: updateError } = await admin
+    .from("jobs")
+    .update({
+      status: "dispatching",
+      execution_token_hash: executionTokenHash,
+      execution_token_expires_at: executionTokenExpiresAt,
+      last_progress_stage: "dispatching",
+      last_progress_message: "Automatic runner claimed the job and is sending it to the companion.",
+    })
+    .eq("id", candidateJob.id)
+    .eq("status", "queued");
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  await appendJobEvent(admin, candidateJob.id, "runner-claimed", {
+    source: "automatic-runner",
+  });
+
+  return {
+    jobId: candidateJob.id,
+    jobType: candidateJob.job_type,
+    targetUrl: candidateJob.target_url,
+    executionToken,
+    backendBaseUrl,
+    apiBasePath: "/api/companion" as const,
+  };
+}
+
+export async function releaseAutomatedJobClaim(userId: string, jobId: string, reason: string) {
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("jobs")
+    .update({
+      status: "queued",
+      progress: null,
+      last_progress_stage: "queued",
+      last_progress_message: reason,
+    })
+    .eq("id", jobId)
+    .eq("user_id", userId)
+    .eq("status", "dispatching");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await appendJobEvent(admin, jobId, "runner-release", {
+    source: "automatic-runner",
+    reason,
+  });
+}
+
 export async function listUserJobs(client: SupabaseClient, userId: string, limit = 12) {
   const { data, error } = await client
     .from("jobs")

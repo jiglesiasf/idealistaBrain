@@ -37,7 +37,7 @@ export function normalizeCompanionRuntimeError(message?: string) {
   return message;
 }
 
-export async function pingCompanion() {
+export async function getCompanionStatus() {
   const extensionId = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
   const runtime = getChromeRuntime();
 
@@ -52,7 +52,7 @@ export async function pingCompanion() {
     };
   }
 
-  return await new Promise<{ ok: boolean; error?: string }>((resolve) => {
+  return await new Promise<{ ok: boolean; error?: string; busy?: boolean; activeJobId?: string }>((resolve) => {
     try {
       runtime.sendMessage?.(
         extensionId,
@@ -70,17 +70,11 @@ export async function pingCompanion() {
             return;
           }
 
-          if (response.busy) {
-            resolve({
-              ok: false,
-              error: response.activeJobId
-                ? `El companion ya esta ocupado con el job ${response.activeJobId}.`
-                : "El companion esta ocupado ahora mismo.",
-            });
-            return;
-          }
-
-          resolve({ ok: true });
+          resolve({
+            ok: true,
+            busy: Boolean(response.busy),
+            activeJobId: response.activeJobId,
+          });
         }
       );
     } catch (error) {
@@ -90,6 +84,25 @@ export async function pingCompanion() {
       });
     }
   });
+}
+
+export async function pingCompanion() {
+  const status = await getCompanionStatus();
+
+  if (!status.ok) {
+    return status;
+  }
+
+  if (status.busy) {
+    return {
+      ok: false,
+      error: status.activeJobId
+        ? `El companion ya esta ocupado con el job ${status.activeJobId}.`
+        : "El companion esta ocupado ahora mismo.",
+    };
+  }
+
+  return { ok: true };
 }
 
 export async function dispatchToCompanion(payload: CreateJobResponse["dispatch"]) {

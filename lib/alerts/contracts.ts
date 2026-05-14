@@ -25,3 +25,26 @@ export type SavedSearchSummary = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type AlertRadarOpportunity = {
+  id: string;
+  listingId: string | null;
+  listingUrl: string;
+  title: string | null;
+  createdAt: string;
+  savedSearchName: string | null;
+  alertEventId: string;
+  linkedJobId: string | null;
+  linkedJobStatus: "queued" | "dispatching" | "running" | "completed" | "failed" | null;
+  cashOnCashRoi: number | null;
+  cashOnCashNetRoi: number | null;
+  grossRoi: number | null;
+  netRoi: number | null;
+};
+
+export type AlertRadarSummary = {
+  opportunities: AlertRadarOpportunity[];
+  newListingsToday: number;
+  searchesTriggeredToday: number;
+  automaticJobsToday: number;
+};
