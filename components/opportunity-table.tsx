@@ -256,6 +256,27 @@ export function OpportunityTable({ opportunities }: { opportunities: Opportunity
                   </div>
                 ))}
               </div>
+
+              <div className="action-row" style={{ marginTop: "0.5rem" }}>
+                <a
+                  className="job-url-link"
+                  href={item.url || "#"}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  Abrir en Idealista
+                </a>
+                {item.priceEur && item.estimatedRentEur ? (
+                  <a
+                    className="job-url-link"
+                    href={`/calculator?price=${item.priceEur}&monthlyRent=${Math.round(item.estimatedRentEur)}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    Abrir en calculadora
+                  </a>
+                ) : null}
+              </div>
             </article>
           );
         })}

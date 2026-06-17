@@ -60,6 +60,7 @@ export type JobSummary = {
   lastProgressStage: string | null;
   lastProgressMessage: string | null;
   resultType: JobType | null;
+  radarId: string | null;
   createdAt: string;
   updatedAt: string;
 };

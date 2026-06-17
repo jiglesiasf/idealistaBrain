@@ -13,6 +13,7 @@ import {
   type JobView,
 } from "@/lib/jobs/contracts";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ingestRadarListings, updateRadarScanStatus } from "@/lib/alerts/service";
 
 type RawJobRow = {
   id: string;
@@ -26,6 +27,7 @@ type RawJobRow = {
   result_type: JobType | null;
   execution_token_hash: string;
   execution_token_expires_at: string;
+  radar_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -84,6 +86,7 @@ function mapJobRow(row: RawJobRow): JobSummary {
     lastProgressStage: row.last_progress_stage,
     lastProgressMessage: row.last_progress_message,
     resultType: row.result_type,
+    radarId: row.radar_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -138,7 +141,7 @@ async function getAuthorizedCompanionJob(jobId: string, executionToken: string) 
   return { admin, job: data };
 }
 
-export async function createJob(client: SupabaseClient, userId: string, rawInput: unknown) {
+export async function createJob(client: SupabaseClient, userId: string, rawInput: unknown, radarId?: string | null) {
   const input = CreateJobInputSchema.parse(rawInput);
   const jobType = inferJobType(input.targetUrl, input.mode);
   const executionToken = createExecutionToken();
@@ -154,6 +157,7 @@ export async function createJob(client: SupabaseClient, userId: string, rawInput
       target_url: input.targetUrl,
       execution_token_hash: executionTokenHash,
       execution_token_expires_at: executionTokenExpiresAt,
+      radar_id: radarId ?? null,
     })
     .select("*")
     .single<RawJobRow>();
@@ -475,11 +479,47 @@ export async function completeCompanionJob(jobId: string, rawInput: unknown) {
   await appendJobEvent(admin, jobId, "completed", {
     resultType: input.payload.resultType,
   });
+
+  if (job.radar_id && input.payload.resultType === "zone-scan") {
+    const result = input.payload.result as Record<string, unknown>;
+    const opportunities = (result.opportunities ?? []) as Array<{
+      url?: string;
+      listingId?: string;
+      title?: string;
+      priceEur?: number;
+      areaM2?: number;
+      rooms?: number;
+      bathrooms?: number;
+      estimatedRentEur?: number;
+      cashOnCashRoi?: number;
+      cashOnCashNetRoi?: number;
+      grossRoi?: number;
+      netRoi?: number;
+    }>;
+
+    const listings = opportunities.map((opp) => ({
+      listingUrl: opp.url ?? "",
+      listingId: opp.listingId ?? null,
+      title: opp.title ?? null,
+      priceEur: opp.priceEur ?? null,
+      sqmeters: opp.areaM2 ?? null,
+      bedrooms: opp.rooms ?? null,
+      bathrooms: opp.bathrooms ?? null,
+      estimatedRentEur: opp.estimatedRentEur ?? null,
+      cashOnCashRoi: opp.cashOnCashRoi ?? null,
+      cashOnCashNetRoi: opp.cashOnCashNetRoi ?? null,
+      grossRoi: opp.grossRoi ?? null,
+      netRoi: opp.netRoi ?? null,
+    }));
+
+    await ingestRadarListings(admin, job.user_id, job.radar_id, listings, "scan");
+    await updateRadarScanStatus(admin, job.user_id, job.radar_id, "completed");
+  }
 }
 
 export async function failCompanionJob(jobId: string, rawInput: unknown) {
   const input = CompanionFailedSchema.parse(rawInput);
-  const { admin } = await getAuthorizedCompanionJob(jobId, input.executionToken);
+  const { admin, job } = await getAuthorizedCompanionJob(jobId, input.executionToken);
 
   const { error } = await admin
     .from("jobs")
@@ -496,4 +536,8 @@ export async function failCompanionJob(jobId: string, rawInput: unknown) {
   }
 
   await appendJobEvent(admin, jobId, "failed", input.payload);
+
+  if (job.radar_id) {
+    await updateRadarScanStatus(admin, job.user_id, job.radar_id, "failed");
+  }
 }

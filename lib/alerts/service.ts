@@ -5,6 +5,9 @@ import {
   type AlertRadarSummary,
   type AlertRadarOpportunity,
   type SavedSearchSummary,
+  type RadarSummary,
+  type RadarListingSummary,
+  CreateRadarInputSchema,
 } from "@/lib/alerts/contracts";
 import type { JobStatus } from "@/lib/jobs/contracts";
 
@@ -340,4 +343,286 @@ export async function getAlertRadarSummary(client: SupabaseClient, userId: strin
     searchesTriggeredToday: (eventRows ?? []).length,
     automaticJobsToday: autoJobEventRows?.length ?? 0,
   };
+}
+
+type RawRadarRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  idealista_search_url: string;
+  is_active: boolean;
+  location_name: string | null;
+  location_type: "district" | "neighborhood" | "municipality" | "area" | null;
+  last_scan_at: string | null;
+  scan_count: number;
+  last_scan_status: "idle" | "scanning" | "completed" | "failed" | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type RawRadarListingRow = {
+  id: string;
+  user_id: string;
+  listing_id: string | null;
+  listing_url: string;
+  title: string | null;
+  price_eur: number | null;
+  sqmeters: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  estimated_rent_eur: number | null;
+  cash_on_cash_roi: number | null;
+  cash_on_cash_net_roi: number | null;
+  gross_roi: number | null;
+  net_roi: number | null;
+  source: "scan" | "alert";
+  is_new: boolean;
+  first_seen_at: string;
+  last_seen_at: string;
+  created_at: string;
+};
+
+function mapRadarRow(row: RawRadarRow, newListingsCount: number, topRoi: number | null): RadarSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    idealistaSearchUrl: row.idealista_search_url,
+    isActive: row.is_active,
+    locationName: row.location_name,
+    locationType: row.location_type,
+    lastScanAt: row.last_scan_at,
+    scanCount: row.scan_count,
+    lastScanStatus: row.last_scan_status,
+    newListingsCount,
+    topRoi,
+    createdAt: row.created_at,
+  };
+}
+
+function mapRadarListingRow(row: RawRadarListingRow): RadarListingSummary {
+  return {
+    id: row.id,
+    listingId: row.listing_id,
+    listingUrl: row.listing_url,
+    title: row.title,
+    priceEur: row.price_eur,
+    sqmeters: row.sqmeters,
+    bedrooms: row.bedrooms,
+    bathrooms: row.bathrooms,
+    estimatedRentEur: row.estimated_rent_eur,
+    source: row.source,
+    isNew: row.is_new,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+    cashOnCashRoi: row.cash_on_cash_roi,
+    cashOnCashNetRoi: row.cash_on_cash_net_roi,
+    grossRoi: row.gross_roi,
+    netRoi: row.net_roi,
+    linkedJobId: null,
+    linkedJobStatus: null,
+  };
+}
+
+export async function listUserRadars(client: SupabaseClient, userId: string, limit = 10) {
+  const { data: radarRows, error: radarError } = await client
+    .from("saved_searches")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_radar", true)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<RawRadarRow[]>();
+
+  if (radarError) {
+    throw new Error(radarError.message);
+  }
+
+  if (!radarRows || radarRows.length === 0) {
+    return [];
+  }
+
+  const radarIds = radarRows.map((r) => r.id);
+
+  const { data: countRows, error: countError } = await client
+    .from("radar_listings")
+    .select("radar_id, is_new")
+    .in("radar_id", radarIds)
+    .eq("is_new", true);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  const newListingsCountMap = new Map<string, number>();
+
+  for (const row of countRows ?? []) {
+    newListingsCountMap.set(
+      row.radar_id,
+      (newListingsCountMap.get(row.radar_id) ?? 0) + 1
+    );
+  }
+
+  return radarRows.map((row) =>
+    mapRadarRow(row, newListingsCountMap.get(row.id) ?? 0, null)
+  );
+}
+
+export async function createRadar(client: SupabaseClient, userId: string, rawInput: unknown) {
+  const input = CreateRadarInputSchema.parse(rawInput);
+
+  const { data, error } = await client
+    .from("saved_searches")
+    .insert({
+      user_id: userId,
+      name: input.name,
+      idealista_search_url: input.idealistaSearchUrl,
+      is_radar: true,
+      last_scan_status: "idle",
+    })
+    .select("*")
+    .single<RawRadarRow>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapRadarRow(data, 0, null);
+}
+
+export async function getRadarDetail(client: SupabaseClient, userId: string, radarId: string) {
+  const { data: radarRow, error: radarError } = await client
+    .from("saved_searches")
+    .select("*")
+    .eq("id", radarId)
+    .eq("user_id", userId)
+    .single<RawRadarRow>();
+
+  if (radarError) {
+    throw new Error(radarError.message);
+  }
+
+  const { data: listingRows, error: listingError } = await client
+    .from("radar_listings")
+    .select("*")
+    .eq("radar_id", radarId)
+    .order("first_seen_at", { ascending: false })
+    .limit(50)
+    .returns<RawRadarListingRow[]>();
+
+  if (listingError) {
+    throw new Error(listingError.message);
+  }
+
+  const { data: countData, error: countError } = await client
+    .from("radar_listings")
+    .select("id", { count: "exact", head: true })
+    .eq("radar_id", radarId)
+    .eq("is_new", true);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  const listings = (listingRows ?? []).map(mapRadarListingRow);
+
+  return {
+    radar: mapRadarRow(radarRow, countData?.length ?? 0, null),
+    listings,
+  };
+}
+
+export async function updateRadarScanStatus(
+  client: SupabaseClient,
+  userId: string,
+  radarId: string,
+  status: "idle" | "scanning" | "completed" | "failed"
+) {
+  const updatePayload: Record<string, unknown> = {
+    last_scan_status: status,
+  };
+
+  if (status === "scanning") {
+    updatePayload.last_scan_at = new Date().toISOString();
+  }
+
+  if (status === "completed") {
+    const { data: current } = await client
+      .from("saved_searches")
+      .select("scan_count")
+      .eq("id", radarId)
+      .eq("user_id", userId)
+      .single<{ scan_count: number }>();
+
+    updatePayload.scan_count = (current?.scan_count ?? 0) + 1;
+  }
+
+  const { error } = await client
+    .from("saved_searches")
+    .update(updatePayload)
+    .eq("id", radarId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deleteRadar(client: SupabaseClient, userId: string, radarId: string) {
+  const { error } = await client
+    .from("saved_searches")
+    .delete()
+    .eq("id", radarId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function ingestRadarListings(
+  client: SupabaseClient,
+  userId: string,
+  radarId: string,
+  listings: Array<{
+    listingUrl: string;
+    listingId?: string | null;
+    title?: string | null;
+    priceEur?: number | null;
+    sqmeters?: number | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    estimatedRentEur?: number | null;
+    cashOnCashRoi?: number | null;
+    cashOnCashNetRoi?: number | null;
+    grossRoi?: number | null;
+    netRoi?: number | null;
+  }>,
+  source: "scan" | "alert"
+) {
+  const rows = listings.map((l) => ({
+    radar_id: radarId,
+    user_id: userId,
+    listing_id: l.listingId || null,
+    listing_url: l.listingUrl,
+    title: l.title || null,
+    price_eur: l.priceEur ?? null,
+    sqmeters: l.sqmeters ?? null,
+    bedrooms: l.bedrooms ?? null,
+    bathrooms: l.bathrooms ?? null,
+    estimated_rent_eur: l.estimatedRentEur ?? null,
+    cash_on_cash_roi: l.cashOnCashRoi ?? null,
+    cash_on_cash_net_roi: l.cashOnCashNetRoi ?? null,
+    gross_roi: l.grossRoi ?? null,
+    net_roi: l.netRoi ?? null,
+    source,
+  }));
+
+  const { error } = await client.from("radar_listings").upsert(rows, {
+    onConflict: "radar_id, listing_url",
+    ignoreDuplicates: false,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

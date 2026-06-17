@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AnalyzeForm } from "@/components/analyze-form";
 import { InboxPollCard } from "@/components/inbox-poll-card";
@@ -22,12 +23,7 @@ export default async function HomePage() {
       } = await supabase.auth.getUser();
 
       if (currentUser) {
-        user = currentUser;
-        try {
-          jobs = await listUserJobs(supabase, currentUser.id, 6);
-        } catch (error) {
-          jobsLoadError = error instanceof Error ? error.message : "No he podido cargar el historial de jobs.";
-        }
+        redirect("/dashboard");
       }
     } catch {
       user = null;

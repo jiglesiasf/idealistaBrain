@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { AlertRadar } from "@/components/alert-radar";
+import { RadarGrid } from "@/components/radar-grid";
 import { RecentJobs } from "@/components/recent-jobs";
 import type { AlertRadarSummary } from "@/lib/alerts/contracts";
-import { getAlertRadarSummary } from "@/lib/alerts/service";
+import { getAlertRadarSummary, listUserRadars } from "@/lib/alerts/service";
 import { listUserJobs } from "@/lib/jobs/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,7 +20,9 @@ export default async function DashboardPage() {
   let jobs = [] as Awaited<ReturnType<typeof listUserJobs>>;
   let jobsLoadError: string | null = null;
   let radarLoadError: string | null = null;
+  let radarsLoadError: string | null = null;
   let radarSummary: AlertRadarSummary = getEmptyRadarSummary();
+  let radars: Awaited<ReturnType<typeof listUserRadars>> = [];
 
   try {
     jobs = await listUserJobs(supabase, user.id, 30);
@@ -31,6 +34,12 @@ export default async function DashboardPage() {
     radarSummary = await getAlertRadarSummary(supabase, user.id);
   } catch (error) {
     radarLoadError = error instanceof Error ? error.message : "No he podido cargar el radar diario.";
+  }
+
+  try {
+    radars = await listUserRadars(supabase, user.id);
+  } catch (error) {
+    radarsLoadError = error instanceof Error ? error.message : "No he podido cargar los radars de zona.";
   }
 
   const completedJobs = jobs.filter((job) => job.status === "completed").length;
@@ -59,6 +68,15 @@ export default async function DashboardPage() {
           <p className="muted">{jobsLoadError}</p>
         </section>
       ) : null}
+
+      {radarsLoadError ? (
+        <section className="notice">
+          <strong>Los radars de zona no han cargado bien.</strong>
+          <p className="muted">{radarsLoadError}</p>
+        </section>
+      ) : null}
+
+      <RadarGrid radars={radars} />
 
       <AlertRadar summary={radarSummary} />
 

@@ -46,7 +46,6 @@ export default async function RootLayout({
               <div className="brand-copy">
                 <p className="eyebrow">Idealista Brain</p>
                 <h1 className="brand-title">Rental Intelligence</h1>
-                <p className="brand-subtitle">Web + browser companion</p>
               </div>
             </Link>
 
@@ -59,6 +58,9 @@ export default async function RootLayout({
               </Link>
               <Link href="/runner" className="nav-link">
                 Runner
+              </Link>
+              <Link href="/calculator" className="nav-link">
+                Calculadora
               </Link>
 
               {userEmail ? (
