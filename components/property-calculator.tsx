@@ -461,12 +461,14 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                 </div>
                 <div className="calc-import-grid">
                   {importResult.price ? <><span>Precio</span><strong>{currency(importResult.price)}</strong></> : null}
-                  {importResult.rent ? <><span>Renta estimada</span><strong>{currency(importResult.rent)}/mes</strong></> : null}
-                  {importResult.referenceRent || importResult.referencePricePerM2 ? (
-                    <><span>idealista/data</span><strong>
-                      {importResult.referenceRent ? `${currency(importResult.referenceRent)}/mes` : ""}
-                      {importResult.referencePricePerM2 ? `${importResult.referenceRent ? " " : ""}(${importResult.referencePricePerM2} €/m²)` : ""}
-                      {importResult.rent && importResult.referenceRent ? ` (${((importResult.rent - importResult.referenceRent) / importResult.referenceRent * 100).toFixed(1)}%)` : ""}
+                  {importResult.rent ? (
+                    <><span>Renta estimada</span><strong>
+                      {currency(importResult.rent)}/mes
+                      {importResult.referenceRent
+                        ? ` (idealista/data: ${currency(importResult.referenceRent)}/mes${importResult.referencePricePerM2 ? `, ${importResult.referencePricePerM2} €/m²` : ""}, ${((importResult.rent - importResult.referenceRent) / importResult.referenceRent * 100).toFixed(1)}%)`
+                        : importResult.referencePricePerM2
+                          ? ` (idealista/data: ${importResult.referencePricePerM2} €/m²)`
+                          : ""}
                     </strong></>
                   ) : null}
                   {importResult.community ? <><span>Comunidad</span><strong>{importResult.community}</strong></> : null}

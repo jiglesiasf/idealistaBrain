@@ -449,22 +449,17 @@ export function JobStatusClient({
               <strong>{Number.isFinite(listingFinancing.monthlyMortgagePaymentEur) ? `${formatCurrency(listingFinancing.monthlyMortgagePaymentEur)} €/mes` : "n/d"}</strong>
             </article>
             <article className="decision-fact-card">
-              <span>Confianza del alquiler</span>
-              <strong>{estimate.confidence || "n/d"}</strong>
+              <span>Renta estimada</span>
+              <strong>
+                {Number.isFinite(estimate.monthlyRentEur)
+                  ? `${formatCurrency(estimate.monthlyRentEur)} €/mes${estimate.referenceMonthlyRentEur
+                    ? ` (idealista/data: ${formatCurrency(estimate.referenceMonthlyRentEur)} €/mes${estimate.referencePricePerM2 ? `, ${estimate.referencePricePerM2} €/m²` : ""}, ${((estimate.monthlyRentEur - estimate.referenceMonthlyRentEur) / estimate.referenceMonthlyRentEur * 100).toFixed(1)}%)`
+                    : estimate.referencePricePerM2
+                      ? ` (idealista/data: ${estimate.referencePricePerM2} €/m²)`
+                      : ""}`
+                  : "n/d"}
+              </strong>
             </article>
-            {estimate.referenceMonthlyRentEur || estimate.referencePricePerM2 ? (
-              <article className="decision-fact-card">
-                <span>idealista/data (referencia)</span>
-                <strong>
-                  {estimate.referenceMonthlyRentEur
-                    ? `${formatCurrency(estimate.referenceMonthlyRentEur)} €/mes${estimate.referencePricePerM2 ? ` (${estimate.referencePricePerM2} €/m²)` : ""}`
-                    : `${estimate.referencePricePerM2} €/m²`}
-                  {estimate.monthlyRentEur && estimate.referenceMonthlyRentEur
-                    ? ` (${((estimate.monthlyRentEur - estimate.referenceMonthlyRentEur) / estimate.referenceMonthlyRentEur * 100).toFixed(1)}%)`
-                    : ""}
-                </strong>
-              </article>
-            ) : null}
           </div>
 
           {Array.isArray(profitability?.notes) && profitability.notes.length > 0 ? (

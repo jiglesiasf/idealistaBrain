@@ -400,46 +400,39 @@ function buildGuardrailLines(guardrails) {
   return lines;
 }
 
-function buildRefLine(estimate) {
+function buildRefSuffix(estimate) {
   if (estimate.referenceMonthlyRentEur) {
     const diff = estimate.monthlyRentEur - estimate.referenceMonthlyRentEur;
     const diffPct = estimate.referenceMonthlyRentEur > 0
       ? ((diff / estimate.referenceMonthlyRentEur) * 100).toFixed(1)
       : null;
-    return `idealista/data: ${formatNumber(estimate.referenceMonthlyRentEur)} €/mes (${estimate.referencePricePerM2} €/m²)${
-      diffPct ? ` | desviacion: ${diff > 0 ? "+" : ""}${diffPct}%` : ""
-    }`;
+    return ` (idealista/data: ${formatNumber(estimate.referenceMonthlyRentEur)} €/mes${estimate.referencePricePerM2 ? `, ${estimate.referencePricePerM2} €/m²` : ""}${
+      diffPct ? `, ${diff > 0 ? "+" : ""}${diffPct}%` : ""
+    })`;
   }
   if (estimate.referencePricePerM2) {
-    return `idealista/data: ${estimate.referencePricePerM2} €/m² (referencia)`;
+    return ` (idealista/data: ${estimate.referencePricePerM2} €/m²)`;
   }
-  return null;
+  return "";
 }
 
 function buildEstimateLines(estimate) {
-  const refLine = estimate ? buildRefLine(estimate) : null;
+  const refSuffix = estimate ? buildRefSuffix(estimate) : "";
 
   if (!estimate || !estimate.monthlyRentEur) {
     return [
-      "Sin estimacion usable",
-      ...(refLine ? [refLine] : []),
+      `Sin estimacion usable${refSuffix}`,
       estimate?.method || "No se encontraron comparables validos suficientes.",
     ];
   }
 
-  const lines = [
-    `${formatNumber(estimate.monthlyRentEur)} €/mes`,
+  return [
+    `${formatNumber(estimate.monthlyRentEur)} €/mes${refSuffix}`,
     `Rango: ${formatNumber(estimate.lowEur)} € - ${formatNumber(estimate.highEur)} €`,
     `Comparables: ${estimate.comparablesUsed}`,
     `Confianza: ${estimate.confidence}`,
     estimate.method,
   ];
-
-  if (refLine) {
-    lines.push(refLine);
-  }
-
-  return lines;
 }
 
 function buildProfitabilityLines(profitability) {
