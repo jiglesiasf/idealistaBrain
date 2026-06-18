@@ -19,17 +19,17 @@
     downPaymentRatio: 0.2,
     acquisitionCostRatio: 0.1,
     loanToValueRatio: 0.8,
-    fixedMortgageInterestRate: 0.025,
+    fixedMortgageInterestRate: 0.028,
     mortgageTermYears: 25,
-    vacancyRatio: 0.05,
+    vacancyRatio: 0.083,
     managementRatio: 0.08,
-    maintenanceRatio: 0.05,
-    localTaxesAndCommunityRatio: 0.04,
-    insuranceAndIncidentsRatio: 0.02,
+    maintenanceRatio: 0.026,
+    localTaxesAndCommunityRatio: 0.069,
+    insuranceAndIncidentsRatio: 0.031,
   });
   const ROI_SORT_OPTIONS = Object.freeze({
-    cashOnCashRoi: "ROI cash on cash",
-    cashOnCashNetRoi: "ROI cash on cash neto",
+    cashOnCashRoi: "ROI cash to cash",
+    cashOnCashNetRoi: "ROI cash to cash neto",
     grossRoi: "ROI bruto",
     netRoi: "ROI neto",
   });
@@ -406,7 +406,7 @@
         assumptions,
         notes: [
           "Hace falta precio de compra y estimacion de alquiler para calcular rentabilidad.",
-          "El ROI cash on cash neto usa una hipoteca fija simplificada, no una oferta bancaria real.",
+          "El ROI cash to cash neto usa una hipoteca fija simplificada, no una oferta bancaria real.",
         ],
       };
     }
@@ -479,8 +479,8 @@
         netRoi: totalAcquisitionCostEur > 0 ? annualNetRentEur / totalAcquisitionCostEur : null,
       },
       notes: [
-        "ROI cash on cash: flujo anual neto sobre caja aportada por el comprador.",
-        "ROI cash on cash neto: flujo anual tras hipoteca sobre caja aportada.",
+        "ROI cash to cash: flujo anual neto sobre caja aportada por el comprador.",
+        "ROI cash to cash neto: flujo anual tras hipoteca sobre caja aportada.",
         "ROI bruto: renta anual bruta sobre coste total estimado de adquisicion.",
         "ROI neto: renta anual neta tras gastos operativos sobre coste total estimado de adquisicion.",
         "Todavia no se descuenta reforma inicial, fiscalidad real de compra ni condiciones bancarias personalizadas.",

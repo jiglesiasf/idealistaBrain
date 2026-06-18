@@ -16,13 +16,13 @@
     downPaymentRatio: 0.2,
     acquisitionCostRatio: 0.1,
     loanToValueRatio: 0.8,
-    fixedMortgageInterestRate: 0.025,
+    fixedMortgageInterestRate: 0.028,
     mortgageTermYears: 25,
-    vacancyRatio: 0.05,
+    vacancyRatio: 0.083,
     managementRatio: 0.08,
-    maintenanceRatio: 0.05,
-    localTaxesAndCommunityRatio: 0.04,
-    insuranceAndIncidentsRatio: 0.02,
+    maintenanceRatio: 0.026,
+    localTaxesAndCommunityRatio: 0.069,
+    insuranceAndIncidentsRatio: 0.031,
   });
   const ROI_SORT_OPTIONS = Object.freeze({
     cashOnCashRoi: "ROI cash to cash",
