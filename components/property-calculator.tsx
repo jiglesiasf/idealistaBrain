@@ -820,6 +820,41 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             </section>
           ) : null}
       </div>
+
+      {importResult?.comparables && importResult.comparables.length > 0 ? (
+        <section className="card">
+          <div className="card-header">
+            <span className="section-label">📊 Comparables</span>
+            <h3 className="card-title">Inmuebles usados para estimar la renta ({importResult.comparables.length})</h3>
+          </div>
+          <div className="table-shell">
+            <table className="data-table calc-comps-table">
+              <thead>
+                <tr>
+                  <th>Inmueble</th>
+                  <th>Hab.</th>
+                  <th>Metros</th>
+                  <th>Precio/m²</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importResult.comparables.map((comp, i) => (
+                  <tr key={i}>
+                    <td>
+                      <a href={comp.url} target="_blank" rel="noreferrer noopener" className="calc-comp-link">
+                        {comp.title || "Ver inmueble"}
+                      </a>
+                    </td>
+                    <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
+                    <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
+                    <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

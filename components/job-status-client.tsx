@@ -452,6 +452,17 @@ export function JobStatusClient({
               <span>Confianza del alquiler</span>
               <strong>{estimate.confidence || "n/d"}</strong>
             </article>
+            {estimate.referenceMonthlyRentEur ? (
+              <article className="decision-fact-card">
+                <span>idealista/data (referencia)</span>
+                <strong>
+                  {formatCurrency(estimate.referenceMonthlyRentEur)} €/mes
+                  {estimate.monthlyRentEur
+                    ? ` (${((estimate.monthlyRentEur - estimate.referenceMonthlyRentEur) / estimate.referenceMonthlyRentEur * 100).toFixed(1)}%)`
+                    : ""}
+                </strong>
+              </article>
+            ) : null}
           </div>
 
           {Array.isArray(profitability?.notes) && profitability.notes.length > 0 ? (

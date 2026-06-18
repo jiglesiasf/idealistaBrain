@@ -402,19 +402,39 @@ function buildGuardrailLines(guardrails) {
 
 function buildEstimateLines(estimate) {
   if (!estimate || !estimate.monthlyRentEur) {
+    const refLine = estimate?.referenceMonthlyRentEur
+      ? `idealista/data: ${formatNumber(estimate.referenceMonthlyRentEur)} €/mes (${estimate.referencePricePerM2} €/m²)`
+      : null;
+
     return [
       "Sin estimacion usable",
+      ...(refLine ? [refLine] : []),
       estimate?.method || "No se encontraron comparables validos suficientes.",
     ];
   }
 
-  return [
+  const lines = [
     `${formatNumber(estimate.monthlyRentEur)} €/mes`,
     `Rango: ${formatNumber(estimate.lowEur)} € - ${formatNumber(estimate.highEur)} €`,
     `Comparables: ${estimate.comparablesUsed}`,
     `Confianza: ${estimate.confidence}`,
     estimate.method,
   ];
+
+  if (estimate.referenceMonthlyRentEur) {
+    const diff = estimate.monthlyRentEur - estimate.referenceMonthlyRentEur;
+    const diffPct = estimate.referenceMonthlyRentEur > 0
+      ? ((diff / estimate.referenceMonthlyRentEur) * 100).toFixed(1)
+      : null;
+
+    lines.push(
+      `idealista/data: ${formatNumber(estimate.referenceMonthlyRentEur)} €/mes (${estimate.referencePricePerM2} €/m²)${
+        diffPct ? ` | desviacion: ${diff > 0 ? "+" : ""}${diffPct}%` : ""
+      }`
+    );
+  }
+
+  return lines;
 }
 
 function buildProfitabilityLines(profitability) {

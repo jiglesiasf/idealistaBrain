@@ -27,6 +27,60 @@
     localTaxesAndCommunityRatio: 0.069,
     insuranceAndIncidentsRatio: 0.031,
   });
+  const REFERENCE_RENTAL_PRICES = Object.freeze({
+    valencia: {
+      city: "Valencia",
+      cityAvg: { rentPerM2: 15.5, source: "idealista/data" },
+      districts: Object.freeze({
+        "ciutat-vella": { rentPerM2: 19.0, source: "idealista/data" },
+        "eixample": { rentPerM2: 16.7, source: "idealista/data" },
+        "l-eixample": { rentPerM2: 16.7, source: "idealista/data" },
+        "el-pla-del-real": { rentPerM2: 14.0, source: "idealista/data" },
+        "pla-del-real": { rentPerM2: 14.0, source: "idealista/data" },
+        "extramurs": { rentPerM2: 15.6, source: "idealista/data" },
+        "campanar": { rentPerM2: 15.4, source: "idealista/data" },
+        "camins-al-grau": { rentPerM2: 14.9, source: "idealista/data" },
+        "quatre-carreres": { rentPerM2: 15.0, source: "idealista/data" },
+        "algiron": { rentPerM2: 14.0, source: "idealista/data" },
+        "algiron-s": { rentPerM2: 14.0, source: "idealista/data" },
+        "benimaclet": { rentPerM2: 13.2, source: "idealista/data" },
+        "poblats-maritims": { rentPerM2: 16.2, source: "idealista/data" },
+        "la-saidia": { rentPerM2: 14.3, source: "idealista/data" },
+        "la-saïdia": { rentPerM2: 14.3, source: "idealista/data" },
+        "patraix": { rentPerM2: 13.1, source: "idealista/data" },
+        "jesus": { rentPerM2: 13.7, source: "idealista/data" },
+        "benicalap": { rentPerM2: 14.7, source: "idealista/data" },
+        "l-olivereta": { rentPerM2: 13.8, source: "idealista/data" },
+        "olivereta": { rentPerM2: 13.8, source: "idealista/data" },
+        "rascanya": { rentPerM2: 14.0, source: "idealista/data" },
+        "pobles-de-l-oest": { rentPerM2: 17.6, source: "idealista/data" },
+        "pobles-del-nord": { rentPerM2: 11.4, source: "idealista/data" },
+        "pobles-del-sud": { rentPerM2: 13.1, source: "idealista/data" },
+      }),
+    },
+  });
+
+  function lookupReferencePrice(municipality, district) {
+    const cityKey = slugify(municipality || "");
+    const cityData = REFERENCE_RENTAL_PRICES[cityKey];
+
+    if (!cityData) return null;
+
+    if (district) {
+      const districtKey = slugify(district);
+      if (cityData.districts[districtKey]) {
+        return cityData.districts[districtKey];
+      }
+      for (const [key, value] of Object.entries(cityData.districts)) {
+        if (key.includes(districtKey) || districtKey.includes(key)) {
+          return value;
+        }
+      }
+    }
+
+    return cityData.cityAvg;
+  }
+
   const ROI_SORT_OPTIONS = Object.freeze({
     cashOnCashRoi: "ROI cash to cash",
     cashOnCashNetRoi: "ROI cash to cash neto",
@@ -329,6 +383,16 @@
   function buildRentEstimate(subject, comparables) {
     const pricedComparables = comparables.filter((item) => Number.isFinite(item.priceEur));
 
+    const referencePrice = lookupReferencePrice(
+      subject.targetAsset?.municipality || subject.location?.city,
+      subject.targetAsset?.district || subject.location?.district
+    );
+
+    const referenceMonthlyRentEur =
+      referencePrice && Number.isFinite(subject.targetAsset?.areaM2)
+        ? roundMoney(referencePrice.rentPerM2 * subject.targetAsset.areaM2)
+        : null;
+
     if (pricedComparables.length === 0) {
       return {
         confidence: "low",
@@ -337,6 +401,9 @@
         lowEur: null,
         highEur: null,
         method: "Sin comparables validos con precio.",
+        referencePricePerM2: referencePrice?.rentPerM2 ?? null,
+        referenceMonthlyRentEur,
+        referenceSource: referencePrice?.source ?? null,
       };
     }
 
@@ -356,6 +423,9 @@
         lowEur: roundMoney(lowPerM2 * subjectArea),
         highEur: roundMoney(highPerM2 * subjectArea),
         method: "Mediana de €/m2 de comparables validos.",
+        referencePricePerM2: referencePrice?.rentPerM2 ?? null,
+        referenceMonthlyRentEur,
+        referenceSource: referencePrice?.source ?? null,
       };
     }
 
@@ -368,6 +438,9 @@
       lowEur: roundMoney(percentile(rents, 0.25)),
       highEur: roundMoney(percentile(rents, 0.75)),
       method: "Mediana directa de rentas mensuales.",
+      referencePricePerM2: referencePrice?.rentPerM2 ?? null,
+      referenceMonthlyRentEur,
+      referenceSource: referencePrice?.source ?? null,
     };
   }
 
