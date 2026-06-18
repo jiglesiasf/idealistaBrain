@@ -2308,6 +2308,32 @@ button {
   font-size: 0.8rem;
 }
 
+.calc-comps-table th:first-child,
+.calc-comps-table td:first-child {
+  padding-left: 0;
+}
+
+.calc-comps-table th:last-child,
+.calc-comps-table td:last-child {
+  padding-right: 0;
+}
+
+.calc-comp-link {
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.calc-comp-link:hover {
+  text-decoration: underline;
+}
+
+.calc-comp-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .calculator-layout {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;

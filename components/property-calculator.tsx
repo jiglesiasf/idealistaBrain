@@ -5,6 +5,15 @@ import { calculate, calculateTargetPrice, calculateTargetRent } from "@/lib/calc
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
 import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/engine";
 
+type ComparableData = {
+  title: string;
+  url: string;
+  priceEur: number | null;
+  areaM2: number | null;
+  rooms: number | null;
+  pricePerM2: number | null;
+};
+
 const EXTENSION_ID = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
 
 type ImportStatus = "idle" | "pinging" | "creating-job" | "dispatching" | "waiting" | "error";
@@ -178,6 +187,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     propertyType: string | null;
     state: string | null;
     importedUrl: string;
+    comparables: ComparableData[];
   } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -362,7 +372,17 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             patch({ monthlyRent: estimate.monthlyRentEur });
           }
 
-          setImportResult({ ...imported, importedUrl: url });
+          const rawComparables = payload?.comparables as Array<Record<string, unknown>> | undefined;
+          const comparables: ComparableData[] = (rawComparables ?? []).map((c) => ({
+            title: typeof c.title === "string" ? c.title : "",
+            url: typeof c.url === "string" ? c.url : typeof c.canonicalUrl === "string" ? c.canonicalUrl : "",
+            priceEur: typeof c.priceEur === "number" ? c.priceEur : null,
+            areaM2: typeof c.areaM2 === "number" ? c.areaM2 : null,
+            rooms: typeof c.rooms === "number" ? c.rooms : null,
+            pricePerM2: typeof c.pricePerM2 === "number" ? c.pricePerM2 : typeof c.rentPerM2 === "number" ? c.rentPerM2 : null,
+          })).filter((c) => c.url);
+
+          setImportResult({ ...imported, importedUrl: url, comparables });
           setImportStatus("idle");
           setIdealistaUrl("");
         } else if (jobView.status === "failed") {
@@ -764,6 +784,41 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             </div>
           ) : null}
         </section>
+
+          {importResult?.comparables && importResult.comparables.length > 0 ? (
+            <section className="card">
+              <div className="card-header">
+                <span className="section-label">📊 Comparables</span>
+                <h3 className="card-title">Inmuebles usados para estimar la renta ({importResult.comparables.length})</h3>
+              </div>
+              <div className="table-shell">
+                <table className="data-table calc-comps-table">
+                  <thead>
+                    <tr>
+                      <th>Inmueble</th>
+                      <th>Hab.</th>
+                      <th>Metros</th>
+                      <th>Precio/m²</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importResult.comparables.map((comp, i) => (
+                      <tr key={i}>
+                        <td>
+                          <a href={comp.url} target="_blank" rel="noreferrer noopener" className="calc-comp-link">
+                            {comp.title || "Ver inmueble"}
+                          </a>
+                        </td>
+                        <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
+                        <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
+                        <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
       </div>
     </div>
   );
