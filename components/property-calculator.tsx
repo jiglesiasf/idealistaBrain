@@ -119,6 +119,29 @@ function round(v: number): number {
   return Math.round(v);
 }
 
+function buildShareUrl(input: CalculatorInput, idealistaUrl?: string): string {
+  const params = new URLSearchParams();
+  if (input.price !== 150000) params.set("price", String(input.price));
+  if (input.monthlyRent !== 800) params.set("monthlyRent", String(input.monthlyRent));
+  if (input.itpRate !== 0.10) params.set("itpRate", String(input.itpRate));
+  if (input.notaryRegistry !== 2000) params.set("notaryRegistry", String(input.notaryRegistry));
+  if (input.mortgageFees !== 350) params.set("mortgageFees", String(input.mortgageFees));
+  if (input.renovationCost !== 0) params.set("renovationCost", String(input.renovationCost));
+  if (input.purchaseCommission !== 0) params.set("purchaseCommission", String(input.purchaseCommission));
+  if (input.furnitureOther !== 1000) params.set("furnitureOther", String(input.furnitureOther));
+  if (input.loanToValue !== 0.8) params.set("loanToValue", String(input.loanToValue));
+  if (input.interestRate !== 0.028) params.set("interestRate", String(input.interestRate));
+  if (input.mortgageTermYears !== 25) params.set("mortgageTermYears", String(input.mortgageTermYears));
+  if (input.ibiBasuras !== 300) params.set("ibiBasuras", String(input.ibiBasuras));
+  if (input.insurance !== 300) params.set("insurance", String(input.insurance));
+  if (input.community !== 360) params.set("community", String(input.community));
+  if (input.maintenance !== 250) params.set("maintenance", String(input.maintenance));
+  if (input.vacancyMonths !== 1) params.set("vacancyMonths", String(input.vacancyMonths));
+  if (idealistaUrl) params.set("idealistaUrl", idealistaUrl);
+  const qs = params.toString();
+  return `${window.location.origin}/calculator${qs ? `?${qs}` : ""}`;
+}
+
 const DEFAULT_INPUT: CalculatorInput = {
   price: 150000,
   monthlyRent: 800,
@@ -138,11 +161,11 @@ const DEFAULT_INPUT: CalculatorInput = {
   vacancyMonths: 1,
 };
 
-export function PropertyCalculator({ initialValues }: { initialValues?: Partial<CalculatorInput> }) {
+export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { initialValues?: Partial<CalculatorInput>; initialIdealistaUrl?: string }) {
   const [input, setInput] = useState<CalculatorInput>({ ...DEFAULT_INPUT, ...initialValues });
   const [itpCommunity, setItpCommunity] = useState("Comunidad Valenciana");
   const [hasRenovation, setHasRenovation] = useState(false);
-  const [idealistaUrl, setIdealistaUrl] = useState("");
+  const [idealistaUrl, setIdealistaUrl] = useState(initialIdealistaUrl ?? "");
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
   const [importError, setImportError] = useState("");
   const [importResult, setImportResult] = useState<{
@@ -154,7 +177,9 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
     rooms: number | null;
     propertyType: string | null;
     state: string | null;
+    importedUrl: string;
   } | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrice = useMemo(() => calculateTargetPrice(input), [input]);
@@ -337,7 +362,7 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
             patch({ monthlyRent: estimate.monthlyRentEur });
           }
 
-          setImportResult(imported);
+          setImportResult({ ...imported, importedUrl: url });
           setImportStatus("idle");
           setIdealistaUrl("");
         } else if (jobView.status === "failed") {
@@ -389,7 +414,24 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
             {importError ? <p className="calc-url-error">{importError}</p> : null}
             {importResult ? (
               <div className="calc-import-summary">
-                <p className="calc-import-ok">✓ Datos importados de Idealista</p>
+                <div className="calc-import-ok">
+                  <span>✓ Datos importados de Idealista</span>
+                  {importResult.importedUrl ? (
+                    <a href={importResult.importedUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
+                      Ver en Idealista ↗
+                    </a>
+            ) : null}
+          </div>
+          {initialIdealistaUrl && !importResult ? (
+            <div className="calc-import-summary">
+              <div className="calc-import-ok">
+                <span>📎 Datos desde enlace compartido</span>
+                <a href={initialIdealistaUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
+                  Ver en Idealista ↗
+                </a>
+              </div>
+            </div>
+          ) : null}
                 <div className="calc-import-grid">
                   {importResult.price ? <><span>Precio</span><strong>{currency(importResult.price)}</strong></> : null}
                   {importResult.rent ? <><span>Renta estimada</span><strong>{currency(importResult.rent)}/mes</strong></> : null}
@@ -556,6 +598,31 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
               <strong>{(result.income.monthlyNetCashFlow >= 0 ? "+" : "") + currency(Math.abs(result.income.monthlyNetCashFlow))}</strong>
             </div>
           </div>
+        </div>
+
+        <div className="calc-share-row">
+          <button
+            type="button"
+            className="calc-share-btn"
+            onClick={() => {
+              const url = buildShareUrl(input, importResult?.importedUrl);
+              navigator.clipboard.writeText(url).then(() => {
+                setShareCopied(true);
+                setTimeout(() => setShareCopied(false), 2000);
+              }).catch(() => {
+                const input = document.createElement("input");
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand("copy");
+                document.body.removeChild(input);
+                setShareCopied(true);
+                setTimeout(() => setShareCopied(false), 2000);
+              });
+            }}
+          >
+            {shareCopied ? "✓ URL copiada" : "🔗 Compartir"}
+          </button>
         </div>
 
         <section className="card tone-neutral">

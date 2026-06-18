@@ -1924,6 +1924,20 @@ button {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--good);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calc-import-link {
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.calc-import-link:hover {
+  text-decoration: underline;
 }
 
 .calc-import-grid {
@@ -1939,6 +1953,28 @@ button {
 
 .calc-import-grid strong {
   color: var(--ink);
+}
+
+.calc-share-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.calc-share-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.calc-share-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .calc-field-grid {
