@@ -192,6 +192,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     comparables: ComparableData[];
   } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showComparables, setShowComparables] = useState(false);
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrice = useMemo(() => calculateTargetPrice(input), [input]);
@@ -451,22 +452,11 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                         Ver en Idealista ↗
                       </a>
                     ) : null}
-                    <button
-                      type="button"
-                      className="calc-import-link"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const url = buildShareUrl(input, importResult.importedUrl);
-                        navigator.clipboard.writeText(url).then(() => {
-                          const btn = e.currentTarget;
-                          const prev = btn.textContent;
-                          btn.textContent = "✓ URL copiada";
-                          setTimeout(() => { btn.textContent = prev; }, 2000);
-                        });
-                      }}
-                    >
-                      Compartir
-                    </button>
+                    {importResult.comparables.length > 0 ? (
+                      <button type="button" className="calc-import-link" onClick={() => setShowComparables(true)}>
+                        Ver comparables
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="calc-import-grid">
@@ -496,22 +486,6 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                     <a href={initialIdealistaUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
                       Ver en Idealista ↗
                     </a>
-                    <button
-                      type="button"
-                      className="calc-import-link"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const url = buildShareUrl(input, initialIdealistaUrl);
-                        navigator.clipboard.writeText(url).then(() => {
-                          const btn = e.currentTarget;
-                          const prev = btn.textContent;
-                          btn.textContent = "✓ URL copiada";
-                          setTimeout(() => { btn.textContent = prev; }, 2000);
-                        });
-                      }}
-                    >
-                      Compartir
-                    </button>
                   </div>
                 </div>
               </div>
@@ -800,76 +774,43 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             </div>
           ) : null}
         </section>
-
-          {importResult?.comparables && importResult.comparables.length > 0 ? (
-            <section className="card">
-              <div className="card-header">
-                <span className="section-label">📊 Comparables</span>
-                <h3 className="card-title">Inmuebles usados para estimar la renta ({importResult.comparables.length})</h3>
-              </div>
-              <div className="table-shell">
-                <table className="data-table calc-comps-table">
-                  <thead>
-                    <tr>
-                      <th>Inmueble</th>
-                      <th>Hab.</th>
-                      <th>Metros</th>
-                      <th>Precio/m²</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {importResult.comparables.map((comp, i) => (
-                      <tr key={i}>
-                        <td>
-                          <a href={comp.url} target="_blank" rel="noreferrer noopener" className="calc-comp-link">
-                            {comp.title || "Ver inmueble"}
-                          </a>
-                        </td>
-                        <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
-                        <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
-                        <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ) : null}
       </div>
 
-      {importResult?.comparables && importResult.comparables.length > 0 ? (
-        <section className="card">
-          <div className="card-header">
-            <span className="section-label">📊 Comparables</span>
-            <h3 className="card-title">Inmuebles usados para estimar la renta ({importResult.comparables.length})</h3>
-          </div>
-          <div className="table-shell">
-            <table className="data-table calc-comps-table">
-              <thead>
-                <tr>
-                  <th>Inmueble</th>
-                  <th>Hab.</th>
-                  <th>Metros</th>
-                  <th>Precio/m²</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importResult.comparables.map((comp, i) => (
-                  <tr key={i}>
-                    <td>
-                      <a href={comp.url} target="_blank" rel="noreferrer noopener" className="calc-comp-link">
-                        {comp.title || "Ver inmueble"}
-                      </a>
-                    </td>
-                    <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
-                    <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
-                    <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
+      {showComparables && importResult?.comparables ? (
+        <div className="modal-overlay" onClick={() => setShowComparables(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "700px" }}>
+            <div className="modal-header">
+              <h3>Comparables utilizados ({importResult.comparables.length})</h3>
+              <button type="button" className="modal-close" onClick={() => setShowComparables(false)}>✕</button>
+            </div>
+            <div className="table-shell">
+              <table className="data-table calc-comps-table">
+                <thead>
+                  <tr>
+                    <th>Inmueble</th>
+                    <th>Hab.</th>
+                    <th>Metros</th>
+                    <th>Precio/m²</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {importResult.comparables.map((comp, i) => (
+                    <tr key={i}>
+                      <td>
+                        <a href={comp.url} target="_blank" rel="noreferrer noopener" className="calc-comp-link">
+                          {comp.title || "Ver inmueble"}
+                        </a>
+                      </td>
+                      <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
+                      <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
+                      <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </section>
+        </div>
       ) : null}
     </div>
   );

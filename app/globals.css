@@ -1563,6 +1563,30 @@ button {
 
 .modal-header {
   margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--ink);
+  opacity: 0.5;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.modal-close:hover {
+  opacity: 1;
+  background: rgba(0,0,0,0.05);
 }
 
 .modal-card .field {
