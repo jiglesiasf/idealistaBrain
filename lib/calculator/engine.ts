@@ -90,81 +90,41 @@ function roundMoney(value: number): number {
   return Math.round(value);
 }
 
-export interface TargetPrices {
-  for10PercentGross: {
-    targetPrice: number;
-    cashOnCashNetRoiAtTarget: number | null;
-  } | null;
-  for7PercentC2CNet: {
-    targetPrice: number;
-    grossYieldAtTarget: number | null;
-  } | null;
-}
+export type TargetPrice = {
+  targetPrice: number;
+  roi: number | null;
+} | null;
 
-export function calculateTargetPrices(input: CalculatorInput): TargetPrices {
+export type TargetRent = {
+  targetRent: number;
+  roi: number | null;
+} | null;
+
+export function calculateTargetPrice(input: CalculatorInput): TargetPrice {
   const monthly = input.monthlyRent;
+  if (monthly <= 0) return null;
 
-  if (monthly <= 0) {
-    return { for10PercentGross: null, for7PercentC2CNet: null };
-  }
+  const price = findTargetDown(input, "price", 0.07);
+  if (price === null) return null;
 
-  const priceFor10Gross = roundMoney(monthly * 12 / 0.10);
-  const resultAt10Gross = calculate({ ...input, price: priceFor10Gross });
-
-  const priceFor7C2C = findTargetDown(input, "price", 0.07);
-  let resultAt7C2C = null;
-  if (priceFor7C2C !== null) {
-    resultAt7C2C = calculate({ ...input, price: priceFor7C2C });
-  }
-
+  const result = calculate({ ...input, price });
   return {
-    for10PercentGross: {
-      targetPrice: priceFor10Gross,
-      cashOnCashNetRoiAtTarget: resultAt10Gross.roi.cashOnCashNetRoi,
-    },
-    for7PercentC2CNet: priceFor7C2C !== null ? {
-      targetPrice: priceFor7C2C,
-      grossYieldAtTarget: resultAt7C2C?.roi.grossYield ?? null,
-    } : null,
+    targetPrice: price,
+    roi: result.roi.cashOnCashNetRoi,
   };
 }
 
-export interface TargetRents {
-  for10PercentGross: {
-    targetRent: number;
-    cashOnCashNetRoiAtTarget: number | null;
-  } | null;
-  for7PercentC2CNet: {
-    targetRent: number;
-    grossYieldAtTarget: number | null;
-  } | null;
-}
-
-export function calculateTargetRents(input: CalculatorInput): TargetRents {
+export function calculateTargetRent(input: CalculatorInput): TargetRent {
   const p = input.price;
+  if (p <= 0) return null;
 
-  if (p <= 0) {
-    return { for10PercentGross: null, for7PercentC2CNet: null };
-  }
+  const rent = findTargetUp(input, "monthlyRent", 0.07);
+  if (rent === null) return null;
 
-  const rentFor10Gross = roundMoney(p * 0.10 / 12);
-  const resultAt10Gross = calculate({ ...input, monthlyRent: rentFor10Gross });
-
-  const rentFor7C2C = findTargetUp(input, "monthlyRent", 0.07);
-  let resultAt7C2C = null;
-  if (rentFor7C2C !== null) {
-    resultAt7C2C = calculate({ ...input, monthlyRent: rentFor7C2C });
-  }
-
+  const result = calculate({ ...input, monthlyRent: rent });
   return {
-    for10PercentGross: {
-      targetRent: rentFor10Gross,
-      cashOnCashNetRoiAtTarget: resultAt10Gross.roi.cashOnCashNetRoi,
-    },
-    for7PercentC2CNet: rentFor7C2C !== null ? {
-      targetRent: rentFor7C2C,
-      grossYieldAtTarget: resultAt7C2C?.roi.grossYield ?? null,
-    } : null,
+    targetRent: rent as number,
+    roi: result.roi.cashOnCashNetRoi,
   };
 }
 
