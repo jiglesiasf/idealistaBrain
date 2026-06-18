@@ -29,7 +29,6 @@
   });
   const REFERENCE_RENTAL_PRICES = Object.freeze({
     valencia: {
-      city: "Valencia",
       cityAvg: { rentPerM2: 15.5, source: "idealista/data" },
       districts: Object.freeze({
         "ciutat-vella": { rentPerM2: 19.0, source: "idealista/data" },
@@ -58,6 +57,20 @@
         "pobles-del-sud": { rentPerM2: 13.1, source: "idealista/data" },
       }),
     },
+    xativa: { cityAvg: { rentPerM2: 8.3, source: "idealista/data" } },
+    gandia: { cityAvg: { rentPerM2: 12.6, source: "idealista/data" } },
+    torrent: { cityAvg: { rentPerM2: 12.5, source: "idealista/data" } },
+    sagunt: { cityAvg: { rentPerM2: 13.1, source: "idealista/data" } },
+    "sagunto-sagunt": { cityAvg: { rentPerM2: 13.1, source: "idealista/data" } },
+    alzira: { cityAvg: { rentPerM2: 7.5, source: "idealista/data" } },
+    burjassot: { cityAvg: { rentPerM2: 11.2, source: "idealista/data" } },
+    "burriana": { cityAvg: { rentPerM2: 7.3, source: "idealista/data" } },
+    "elda": { cityAvg: { rentPerM2: 8.1, source: "idealista/data" } },
+    "alcoi": { cityAvg: { rentPerM2: 8.2, source: "idealista/data" } },
+    "alcoy": { cityAvg: { rentPerM2: 8.2, source: "idealista/data" } },
+    "benidorm": { cityAvg: { rentPerM2: 18.8, source: "idealista/data" } },
+    "alboraia": { cityAvg: { rentPerM2: 17.3, source: "idealista/data" } },
+    "alboraya": { cityAvg: { rentPerM2: 17.3, source: "idealista/data" } },
   });
 
   function lookupReferencePrice(municipality, district) {
@@ -393,18 +406,37 @@
         ? roundMoney(referencePrice.rentPerM2 * subject.targetAsset.areaM2)
         : null;
 
+    function addReference(common) {
+      const result = {
+        ...common,
+        referencePricePerM2: referencePrice?.rentPerM2 ?? null,
+        referenceMonthlyRentEur,
+        referenceSource: referencePrice?.source ?? null,
+        referenceDeviationPct: null,
+      };
+
+      if (
+        referenceMonthlyRentEur &&
+        Number.isFinite(common.monthlyRentEur) &&
+        referenceMonthlyRentEur > 0
+      ) {
+        result.referenceDeviationPct = roundMoney(
+          ((common.monthlyRentEur - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
+        );
+      }
+
+      return result;
+    }
+
     if (pricedComparables.length === 0) {
-      return {
+      return addReference({
         confidence: "low",
         comparablesUsed: 0,
         monthlyRentEur: null,
         lowEur: null,
         highEur: null,
         method: "Sin comparables validos con precio.",
-        referencePricePerM2: referencePrice?.rentPerM2 ?? null,
-        referenceMonthlyRentEur,
-        referenceSource: referencePrice?.source ?? null,
-      };
+      });
     }
 
     const perM2Comparables = pricedComparables.filter((item) => Number.isFinite(item.rentPerM2));
@@ -416,32 +448,26 @@
       const lowPerM2 = percentile(rentsPerM2, 0.25);
       const highPerM2 = percentile(rentsPerM2, 0.75);
 
-      return {
+      return addReference({
         confidence: pricedComparables.length >= TARGET_COMPARABLES ? "high" : "medium",
         comparablesUsed: pricedComparables.length,
         monthlyRentEur: roundMoney(basePerM2 * subjectArea),
         lowEur: roundMoney(lowPerM2 * subjectArea),
         highEur: roundMoney(highPerM2 * subjectArea),
         method: "Mediana de €/m2 de comparables validos.",
-        referencePricePerM2: referencePrice?.rentPerM2 ?? null,
-        referenceMonthlyRentEur,
-        referenceSource: referencePrice?.source ?? null,
-      };
+      });
     }
 
     const rents = pricedComparables.map((item) => item.priceEur).sort((left, right) => left - right);
 
-    return {
+    return addReference({
       confidence: pricedComparables.length >= TARGET_COMPARABLES ? "medium" : "low",
       comparablesUsed: pricedComparables.length,
       monthlyRentEur: roundMoney(percentile(rents, 0.5)),
       lowEur: roundMoney(percentile(rents, 0.25)),
       highEur: roundMoney(percentile(rents, 0.75)),
       method: "Mediana directa de rentas mensuales.",
-      referencePricePerM2: referencePrice?.rentPerM2 ?? null,
-      referenceMonthlyRentEur,
-      referenceSource: referencePrice?.source ?? null,
-    };
+    });
   }
 
   function calculateFixedMonthlyMortgagePayment(principalEur, annualRate, termYears) {
