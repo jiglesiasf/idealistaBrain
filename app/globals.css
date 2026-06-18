@@ -1929,11 +1929,21 @@ button {
   justify-content: space-between;
 }
 
+.calc-import-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .calc-import-link {
   font-weight: 500;
   color: var(--accent);
   text-decoration: none;
   font-size: 0.8rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 
 .calc-import-link:hover {

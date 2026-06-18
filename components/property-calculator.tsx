@@ -416,22 +416,30 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
               <div className="calc-import-summary">
                 <div className="calc-import-ok">
                   <span>✓ Datos importados de Idealista</span>
-                  {importResult.importedUrl ? (
-                    <a href={importResult.importedUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
-                      Ver en Idealista ↗
-                    </a>
-            ) : null}
-          </div>
-          {initialIdealistaUrl && !importResult ? (
-            <div className="calc-import-summary">
-              <div className="calc-import-ok">
-                <span>📎 Datos desde enlace compartido</span>
-                <a href={initialIdealistaUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
-                  Ver en Idealista ↗
-                </a>
-              </div>
-            </div>
-          ) : null}
+                  <div className="calc-import-links">
+                    {importResult.importedUrl ? (
+                      <a href={importResult.importedUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
+                        Ver en Idealista ↗
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="calc-import-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const url = buildShareUrl(input, importResult.importedUrl);
+                        navigator.clipboard.writeText(url).then(() => {
+                          const btn = e.currentTarget;
+                          const prev = btn.textContent;
+                          btn.textContent = "✓ URL copiada";
+                          setTimeout(() => { btn.textContent = prev; }, 2000);
+                        });
+                      }}
+                    >
+                      Compartir
+                    </button>
+                  </div>
+                </div>
                 <div className="calc-import-grid">
                   {importResult.price ? <><span>Precio</span><strong>{currency(importResult.price)}</strong></> : null}
                   {importResult.rent ? <><span>Renta estimada</span><strong>{currency(importResult.rent)}/mes</strong></> : null}
@@ -441,6 +449,34 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                   {importResult.rooms ? <><span>Habitaciones</span><strong>{importResult.rooms}</strong></> : null}
                   {importResult.propertyType ? <><span>Tipo</span><strong>{importResult.propertyType}</strong></> : null}
                   {importResult.state ? <><span>Estado</span><strong>{importResult.state}</strong></> : null}
+                </div>
+              </div>
+            ) : null}
+            {initialIdealistaUrl && !importResult ? (
+              <div className="calc-import-summary">
+                <div className="calc-import-ok">
+                  <span>📎 Datos desde enlace compartido</span>
+                  <div className="calc-import-links">
+                    <a href={initialIdealistaUrl} target="_blank" rel="noreferrer noopener" className="calc-import-link">
+                      Ver en Idealista ↗
+                    </a>
+                    <button
+                      type="button"
+                      className="calc-import-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const url = buildShareUrl(input, initialIdealistaUrl);
+                        navigator.clipboard.writeText(url).then(() => {
+                          const btn = e.currentTarget;
+                          const prev = btn.textContent;
+                          btn.textContent = "✓ URL copiada";
+                          setTimeout(() => { btn.textContent = prev; }, 2000);
+                        });
+                      }}
+                    >
+                      Compartir
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
