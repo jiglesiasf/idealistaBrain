@@ -186,6 +186,8 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     rooms: number | null;
     propertyType: string | null;
     state: string | null;
+    referenceRent: number | null;
+    referencePricePerM2: number | null;
     importedUrl: string;
     comparables: ComparableData[];
   } | null>(null);
@@ -324,7 +326,8 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           const imported: {
             price: number | null; rent: number | null; community: string | null; province: string | null;
             area: number | null; rooms: number | null; propertyType: string | null; state: string | null;
-          } = { price: null, rent: null, community: null, province: null, area: null, rooms: null, propertyType: null, state: null };
+            referenceRent: number | null; referencePricePerM2: number | null;
+          } = { price: null, rent: null, community: null, province: null, area: null, rooms: null, propertyType: null, state: null, referenceRent: null, referencePricePerM2: null };
 
           if (targetAsset?.priceEur && typeof targetAsset.priceEur === "number") {
             imported.price = targetAsset.priceEur;
@@ -370,6 +373,12 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           if (estimate?.monthlyRentEur && typeof estimate.monthlyRentEur === "number") {
             imported.rent = estimate.monthlyRentEur;
             patch({ monthlyRent: estimate.monthlyRentEur });
+          }
+          if (estimate?.referenceMonthlyRentEur && typeof estimate.referenceMonthlyRentEur === "number") {
+            imported.referenceRent = estimate.referenceMonthlyRentEur;
+          }
+          if (estimate?.referencePricePerM2 && typeof estimate.referencePricePerM2 === "number") {
+            imported.referencePricePerM2 = estimate.referencePricePerM2;
           }
 
           const rawComparables = payload?.comparables as Array<Record<string, unknown>> | undefined;
@@ -463,6 +472,13 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                 <div className="calc-import-grid">
                   {importResult.price ? <><span>Precio</span><strong>{currency(importResult.price)}</strong></> : null}
                   {importResult.rent ? <><span>Renta estimada</span><strong>{currency(importResult.rent)}/mes</strong></> : null}
+                  {importResult.referenceRent ? (
+                    <><span>idealista/data</span><strong>
+                      {currency(importResult.referenceRent)}/mes
+                      {importResult.referencePricePerM2 ? ` (${importResult.referencePricePerM2} €/m²)` : ""}
+                      {importResult.rent ? ` (${((importResult.rent - importResult.referenceRent) / importResult.referenceRent * 100).toFixed(1)}%)` : ""}
+                    </strong></>
+                  ) : null}
                   {importResult.community ? <><span>Comunidad</span><strong>{importResult.community}</strong></> : null}
                   {importResult.province ? <><span>Provincia</span><strong>{importResult.province}</strong></> : null}
                   {importResult.area ? <><span>Superficie</span><strong>{fmt(importResult.area)} m²</strong></> : null}
