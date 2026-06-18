@@ -13,7 +13,8 @@
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://localhost/*",
-    "https://127.0.0.1/*"
+    "https://127.0.0.1/*",
+    "https://idealista-brain.vercel.app/*"
   ],
   "externally_connectable": {
     "ids": [
@@ -23,7 +24,8 @@
       "http://localhost/*",
       "http://127.0.0.1/*",
       "https://localhost/*",
-      "https://127.0.0.1/*"
+      "https://127.0.0.1/*",
+      "https://idealista-brain.vercel.app/*"
     ]
   },
   "background": {

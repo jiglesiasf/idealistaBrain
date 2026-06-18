@@ -90,6 +90,84 @@ function roundMoney(value: number): number {
   return Math.round(value);
 }
 
+export interface TargetPrices {
+  for10PercentGross: {
+    targetPrice: number;
+    cashOnCashNetRoiAtTarget: number | null;
+  } | null;
+  for7PercentC2CNet: {
+    targetPrice: number;
+    grossYieldAtTarget: number | null;
+  } | null;
+}
+
+export function calculateTargetPrices(input: CalculatorInput): TargetPrices {
+  const monthly = input.monthlyRent;
+
+  if (monthly <= 0) {
+    return { for10PercentGross: null, for7PercentC2CNet: null };
+  }
+
+  const priceFor10Gross = roundMoney(monthly * 12 / 0.10);
+  const resultAt10Gross = calculate({ ...input, price: priceFor10Gross });
+
+  const priceFor7C2C = findPriceForC2CNetTarget(input, 0.07);
+  let resultAt7C2C = null;
+  if (priceFor7C2C !== null) {
+    resultAt7C2C = calculate({ ...input, price: priceFor7C2C });
+  }
+
+  return {
+    for10PercentGross: {
+      targetPrice: priceFor10Gross,
+      cashOnCashNetRoiAtTarget: resultAt10Gross.roi.cashOnCashNetRoi,
+    },
+    for7PercentC2CNet: priceFor7C2C !== null ? {
+      targetPrice: priceFor7C2C,
+      grossYieldAtTarget: resultAt7C2C?.roi.grossYield ?? null,
+    } : null,
+  };
+}
+
+function findPriceForC2CNetTarget(input: CalculatorInput, target: number): number | null {
+  const monthly = input.monthlyRent;
+  if (monthly <= 0) return null;
+
+  const currentResult = calculate(input);
+  if (currentResult.roi.cashOnCashNetRoi === null) return null;
+
+  if (currentResult.roi.cashOnCashNetRoi >= target) {
+    return input.price;
+  }
+
+  const lowerBound = roundMoney(monthly * 12 / 0.30);
+  const resultAtLow = calculate({ ...input, price: lowerBound });
+
+  if (resultAtLow.roi.cashOnCashNetRoi === null || resultAtLow.roi.cashOnCashNetRoi < target) {
+    return null;
+  }
+
+  let low = lowerBound;
+  let high = input.price;
+
+  for (let i = 0; i < 50; i++) {
+    const mid = roundMoney((low + high) / 2);
+    const result = calculate({ ...input, price: mid });
+
+    if (result.roi.cashOnCashNetRoi === null) return null;
+
+    if (result.roi.cashOnCashNetRoi >= target) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+
+    if (high - low <= 1) break;
+  }
+
+  return roundMoney((low + high) / 2);
+}
+
 export function calculate(input: CalculatorInput): CalculatorOutput {
   const p = input.price;
   const monthly = input.monthlyRent;

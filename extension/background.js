@@ -7,7 +7,7 @@ const COMPANION_API_BASE_PATH = "/api/companion";
 const SUPPORTED_EXTERNAL_JOB_TYPES = new Set(["listing-analysis", "zone-scan"]);
 const IDEALISTA_URL_PATTERN = /^https:\/\/www\.idealista\.com\//i;
 const LISTING_URL_PATTERN = /^https:\/\/www\.idealista\.com\/inmueble\/\d+/i;
-const ZONE_URL_PATTERN = /^https:\/\/www\.idealista\.com\/venta-viviendas\//i;
+const ZONE_URL_PATTERN = /^https:\/\/www\.idealista\.com\/(?:geo\/|multi\/)?venta-viviendas\//i;
 
 let activeExternalJobId = null;
 

@@ -2168,6 +2168,48 @@ button {
   color: var(--bad);
 }
 
+.calc-target-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.calc-target-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.calc-target-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 0.85rem;
+}
+
+.calc-target-row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-target-header {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: transparent;
+  padding: 4px 12px;
+}
+
+.calc-target-footnote {
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+
 .calculator-layout {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { calculate } from "@/lib/calculator/engine";
+import { calculate, calculateTargetPrices } from "@/lib/calculator/engine";
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
-import type { CalculatorInput } from "@/lib/calculator/engine";
+import type { CalculatorInput, TargetPrices } from "@/lib/calculator/engine";
 
 const EXTENSION_ID = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
 
@@ -122,7 +122,7 @@ function round(v: number): number {
 const DEFAULT_INPUT: CalculatorInput = {
   price: 150000,
   monthlyRent: 800,
-  itpRate: 0.06,
+  itpRate: 0.10,
   notaryRegistry: 800,
   mortgageFees: 500,
   renovationCost: 0,
@@ -140,7 +140,7 @@ const DEFAULT_INPUT: CalculatorInput = {
 
 export function PropertyCalculator({ initialValues }: { initialValues?: Partial<CalculatorInput> }) {
   const [input, setInput] = useState<CalculatorInput>({ ...DEFAULT_INPUT, ...initialValues });
-  const [itpCommunity, setItpCommunity] = useState("Comunidad de Madrid");
+  const [itpCommunity, setItpCommunity] = useState("Comunidad Valenciana");
   const [hasRenovation, setHasRenovation] = useState(false);
   const [idealistaUrl, setIdealistaUrl] = useState("");
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
@@ -157,6 +157,7 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
   } | null>(null);
 
   const result = useMemo(() => calculate(input), [input]);
+  const targetPrices = useMemo(() => calculateTargetPrices(input), [input]);
 
   function patch(partial: Partial<CalculatorInput>) {
     setInput((prev) => ({ ...prev, ...partial }));
@@ -633,6 +634,41 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
               <strong>{result.income.monthlyNetCashFlow >= 0 ? "" : "-"}{currency(Math.abs(result.income.monthlyNetCashFlow))}</strong>
             </div>
           </div>
+
+          {targetPrices.for10PercentGross ? (
+            <div className="calc-target-section">
+              <span className="section-label">🎯 Precio objetivo</span>
+              <div className="calc-target-grid">
+                <div className="calc-target-row calc-target-header">
+                  <span>Objetivo</span>
+                  <span>Precio ideal</span>
+                  <span>ROI resultante</span>
+                </div>
+                <div className="calc-target-row">
+                  <span>10% ROI Bruto</span>
+                  <strong>{currency(targetPrices.for10PercentGross.targetPrice)}</strong>
+                  <span>{targetPrices.for10PercentGross.cashOnCashNetRoiAtTarget !== null ? `${percent(targetPrices.for10PercentGross.cashOnCashNetRoiAtTarget)} C2C neto` : "—"}</span>
+                </div>
+                <div className="calc-target-row">
+                  <span>≥7% C2C Neto</span>
+                  {targetPrices.for7PercentC2CNet ? (
+                    <>
+                      <strong>{currency(targetPrices.for7PercentC2CNet.targetPrice)}</strong>
+                      <span>{targetPrices.for7PercentC2CNet.grossYieldAtTarget !== null ? `${percent(targetPrices.for7PercentC2CNet.grossYieldAtTarget)} bruto` : "—"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>—</strong>
+                      <span>No alcanzable</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <p className="muted calc-target-footnote">
+                Precios estimados para cumplir objetivos con los mismos gastos y financiación.
+              </p>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

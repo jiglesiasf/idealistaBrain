@@ -42,7 +42,7 @@ type RawJobEventRow = {
 const COMPANION_TOKEN_TTL_MS = 15 * 60 * 1000;
 const IDEALISTA_HOSTNAME_PATTERN = /^https:\/\/www\.idealista\.com\//i;
 const LISTING_URL_PATTERN = /^https:\/\/www\.idealista\.com\/inmueble\/\d+/i;
-const ZONE_URL_PATTERN = /^https:\/\/www\.idealista\.com\/venta-viviendas\//i;
+const ZONE_URL_PATTERN = /^https:\/\/www\.idealista\.com\/(?:geo\/|multi\/)?venta-viviendas\//i;
 
 function createExecutionToken() {
   return randomBytes(24).toString("base64url");
