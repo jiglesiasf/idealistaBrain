@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { calculate, calculateTargetPrices } from "@/lib/calculator/engine";
+import { calculate, calculateTargetPrices, calculateTargetRents } from "@/lib/calculator/engine";
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
-import type { CalculatorInput, TargetPrices } from "@/lib/calculator/engine";
+import type { CalculatorInput, TargetPrices, TargetRents } from "@/lib/calculator/engine";
 
 const EXTENSION_ID = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
 
@@ -158,6 +158,7 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrices = useMemo(() => calculateTargetPrices(input), [input]);
+  const targetRents = useMemo(() => calculateTargetRents(input), [input]);
 
   function patch(partial: Partial<CalculatorInput>) {
     setInput((prev) => ({ ...prev, ...partial }));
@@ -666,6 +667,41 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
               </div>
               <p className="muted calc-target-footnote">
                 Precios estimados para cumplir objetivos con los mismos gastos y financiación.
+              </p>
+            </div>
+          ) : null}
+
+          {targetRents.for10PercentGross ? (
+            <div className="calc-target-section">
+              <span className="section-label">🎯 Renta objetivo</span>
+              <div className="calc-target-grid">
+                <div className="calc-target-row calc-target-header">
+                  <span>Objetivo</span>
+                  <span>Renta ideal</span>
+                  <span>ROI resultante</span>
+                </div>
+                <div className="calc-target-row">
+                  <span>10% ROI Bruto</span>
+                  <strong>{currency(targetRents.for10PercentGross.targetRent)}/mes</strong>
+                  <span>{targetRents.for10PercentGross.cashOnCashNetRoiAtTarget !== null ? `${percent(targetRents.for10PercentGross.cashOnCashNetRoiAtTarget)} C2C neto` : "—"}</span>
+                </div>
+                <div className="calc-target-row">
+                  <span>≥7% C2C Neto</span>
+                  {targetRents.for7PercentC2CNet ? (
+                    <>
+                      <strong>{currency(targetRents.for7PercentC2CNet.targetRent)}/mes</strong>
+                      <span>{targetRents.for7PercentC2CNet.grossYieldAtTarget !== null ? `${percent(targetRents.for7PercentC2CNet.grossYieldAtTarget)} bruto` : "—"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>—</strong>
+                      <span>No alcanzable</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <p className="muted calc-target-footnote">
+                Rentas estimadas para cumplir objetivos con los mismos gastos y financiación.
               </p>
             </div>
           ) : null}

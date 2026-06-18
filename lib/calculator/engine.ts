@@ -111,7 +111,7 @@ export function calculateTargetPrices(input: CalculatorInput): TargetPrices {
   const priceFor10Gross = roundMoney(monthly * 12 / 0.10);
   const resultAt10Gross = calculate({ ...input, price: priceFor10Gross });
 
-  const priceFor7C2C = findPriceForC2CNetTarget(input, 0.07);
+  const priceFor7C2C = findTargetDown(input, "price", 0.07);
   let resultAt7C2C = null;
   if (priceFor7C2C !== null) {
     resultAt7C2C = calculate({ ...input, price: priceFor7C2C });
@@ -129,7 +129,46 @@ export function calculateTargetPrices(input: CalculatorInput): TargetPrices {
   };
 }
 
-function findPriceForC2CNetTarget(input: CalculatorInput, target: number): number | null {
+export interface TargetRents {
+  for10PercentGross: {
+    targetRent: number;
+    cashOnCashNetRoiAtTarget: number | null;
+  } | null;
+  for7PercentC2CNet: {
+    targetRent: number;
+    grossYieldAtTarget: number | null;
+  } | null;
+}
+
+export function calculateTargetRents(input: CalculatorInput): TargetRents {
+  const p = input.price;
+
+  if (p <= 0) {
+    return { for10PercentGross: null, for7PercentC2CNet: null };
+  }
+
+  const rentFor10Gross = roundMoney(p * 0.10 / 12);
+  const resultAt10Gross = calculate({ ...input, monthlyRent: rentFor10Gross });
+
+  const rentFor7C2C = findTargetUp(input, "monthlyRent", 0.07);
+  let resultAt7C2C = null;
+  if (rentFor7C2C !== null) {
+    resultAt7C2C = calculate({ ...input, monthlyRent: rentFor7C2C });
+  }
+
+  return {
+    for10PercentGross: {
+      targetRent: rentFor10Gross,
+      cashOnCashNetRoiAtTarget: resultAt10Gross.roi.cashOnCashNetRoi,
+    },
+    for7PercentC2CNet: rentFor7C2C !== null ? {
+      targetRent: rentFor7C2C,
+      grossYieldAtTarget: resultAt7C2C?.roi.grossYield ?? null,
+    } : null,
+  };
+}
+
+function findTargetDown(input: CalculatorInput, field: "price", target: number): number | null {
   const monthly = input.monthlyRent;
   if (monthly <= 0) return null;
 
@@ -137,22 +176,22 @@ function findPriceForC2CNetTarget(input: CalculatorInput, target: number): numbe
   if (currentResult.roi.cashOnCashNetRoi === null) return null;
 
   if (currentResult.roi.cashOnCashNetRoi >= target) {
-    return input.price;
+    return input[field];
   }
 
   const lowerBound = roundMoney(monthly * 12 / 0.30);
-  const resultAtLow = calculate({ ...input, price: lowerBound });
+  const resultAtLow = calculate({ ...input, [field]: lowerBound });
 
   if (resultAtLow.roi.cashOnCashNetRoi === null || resultAtLow.roi.cashOnCashNetRoi < target) {
     return null;
   }
 
   let low = lowerBound;
-  let high = input.price;
+  let high = input[field];
 
   for (let i = 0; i < 50; i++) {
     const mid = roundMoney((low + high) / 2);
-    const result = calculate({ ...input, price: mid });
+    const result = calculate({ ...input, [field]: mid });
 
     if (result.roi.cashOnCashNetRoi === null) return null;
 
@@ -160,6 +199,45 @@ function findPriceForC2CNetTarget(input: CalculatorInput, target: number): numbe
       low = mid;
     } else {
       high = mid;
+    }
+
+    if (high - low <= 1) break;
+  }
+
+  return roundMoney((low + high) / 2);
+}
+
+function findTargetUp(input: CalculatorInput, field: "monthlyRent", target: number): number | null {
+  const p = input.price;
+  if (p <= 0) return null;
+
+  const currentResult = calculate(input);
+  if (currentResult.roi.cashOnCashNetRoi === null) return null;
+
+  if (currentResult.roi.cashOnCashNetRoi >= target) {
+    return input[field];
+  }
+
+  const upperBound = roundMoney(p * 0.30 / 12);
+  const resultAtHigh = calculate({ ...input, [field]: upperBound });
+
+  if (resultAtHigh.roi.cashOnCashNetRoi === null || resultAtHigh.roi.cashOnCashNetRoi < target) {
+    return null;
+  }
+
+  let low = input[field];
+  let high = upperBound;
+
+  for (let i = 0; i < 50; i++) {
+    const mid = roundMoney((low + high) / 2);
+    const result = calculate({ ...input, [field]: mid });
+
+    if (result.roi.cashOnCashNetRoi === null) return null;
+
+    if (result.roi.cashOnCashNetRoi >= target) {
+      high = mid;
+    } else {
+      low = mid;
     }
 
     if (high - low <= 1) break;
