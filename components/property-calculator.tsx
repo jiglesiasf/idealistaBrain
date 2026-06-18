@@ -776,6 +776,20 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
         </section>
       </div>
 
+      {!importResult ? (
+        <section className="card calc-comps-placeholder">
+          <p className="muted" style={{ textAlign: "center", padding: "2rem 1rem" }}>
+            Pega una URL de Idealista arriba y analízala para ver los comparables de alquiler usados en el cálculo.
+          </p>
+        </section>
+      ) : importResult.comparables.length === 0 ? (
+        <section className="card calc-comps-placeholder">
+          <p className="muted" style={{ textAlign: "center", padding: "2rem 1rem" }}>
+            No se encontraron comparables de alquiler para esta propiedad.
+          </p>
+        </section>
+      ) : null}
+
       {showComparables && importResult?.comparables ? (
         <div className="modal-overlay" onClick={() => setShowComparables(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "700px" }}>
