@@ -173,7 +173,7 @@ async function scanZone() {
   hideZoneResult();
   clearComparablesSections();
   clearZoneSections();
-  setStatus("Recorriendo los anuncios de venta visibles y calculando su cash to cash uno a uno.", "");
+  setStatus("Recorriendo los anuncios de venta visibles y calculando su cash on cash uno a uno.", "");
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -190,7 +190,7 @@ async function scanZone() {
     const ranked = response.result.opportunities?.filter((item) => Number.isFinite(item.cashOnCashRoi)).length || 0;
     const tone = ranked > 0 ? "success" : "error";
     setStatus(
-      `Escaner listo: ${response.result.analyzedListings} fichas analizadas, ${ranked} oportunidades con cash to cash calculado.`,
+      `Escaner listo: ${response.result.analyzedListings} fichas analizadas, ${ranked} oportunidades con cash on cash calculado.`,
       tone
     );
   } catch (error) {
@@ -429,8 +429,8 @@ function buildProfitabilityLines(profitability) {
   const { inputs, operatingCosts, metrics, assumptions, notes } = profitability;
   const financing = profitability.financing || {};
 
-  lines.push(`ROI cash to cash: ${formatPercent(metrics.cashOnCashRoi)}`);
-  lines.push(`ROI cash to cash neto: ${formatPercent(metrics.cashOnCashNetRoi)}`);
+  lines.push(`ROI cash on cash: ${formatPercent(metrics.cashOnCashRoi)}`);
+  lines.push(`ROI cash on cash neto: ${formatPercent(metrics.cashOnCashNetRoi)}`);
   lines.push(`ROI bruto: ${formatPercent(metrics.grossRoi)}`);
   lines.push(`ROI neto: ${formatPercent(metrics.netRoi)}`);
   lines.push(`Caja aportada: ${formatNumber(inputs.cashInvestedEur)} €`);
@@ -499,8 +499,8 @@ function buildZoneOpportunityLines(opportunities) {
   return opportunities.slice(0, 10).map((item, index) => {
     const parts = [
       `#${index + 1}`,
-      Number.isFinite(item.cashOnCashRoi) ? `cash to cash ${formatPercent(item.cashOnCashRoi)}` : "cash to cash no disponible",
-      Number.isFinite(item.cashOnCashNetRoi) ? `cash to cash neto ${formatPercent(item.cashOnCashNetRoi)}` : "cash to cash neto n/d",
+      Number.isFinite(item.cashOnCashRoi) ? `cash on cash ${formatPercent(item.cashOnCashRoi)}` : "cash on cash no disponible",
+      Number.isFinite(item.cashOnCashNetRoi) ? `cash on cash neto ${formatPercent(item.cashOnCashNetRoi)}` : "cash on cash neto n/d",
       Number.isFinite(item.netRoi) ? `neto ${formatPercent(item.netRoi)}` : "neto n/d",
       Number.isFinite(item.estimatedRentEur) ? `${formatNumber(item.estimatedRentEur)} €/mes` : "sin renta",
       Number.isFinite(item.priceEur) ? `${formatNumber(item.priceEur)} € compra` : "sin precio compra",
@@ -586,12 +586,12 @@ function renderZoneOpportunityCards(node, opportunities) {
 
     appendOpportunityMetric(
       roiGrid,
-      "ROI cash to cash",
+      "ROI cash on cash",
       Number.isFinite(item.cashOnCashRoi) ? formatPercent(item.cashOnCashRoi) : "n/d"
     );
     appendOpportunityMetric(
       roiGrid,
-      "ROI cash to cash neto",
+      "ROI cash on cash neto",
       Number.isFinite(item.cashOnCashNetRoi) ? formatPercent(item.cashOnCashNetRoi) : "n/d"
     );
     appendOpportunityMetric(

@@ -545,7 +545,7 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
           <div className="calc-summary-item">
             <span>📊</span>
             <div>
-              <span>Cash to Cash</span>
+              <span>Cash on Cash</span>
               <strong>{percent(result.roi.cashOnCashRoi)}</strong>
             </div>
           </div>
@@ -602,13 +602,13 @@ export function PropertyCalculator({ initialValues }: { initialValues?: Partial<
               desc="Renta neta anual / precio compra"
             />
             <RoiCard
-              label="ROI Cash to Cash"
+              label="ROI Cash on Cash"
               value={result.roi.cashOnCashRoi}
               target={0.12}
               desc="Renta neta anual / efectivo aportado"
             />
             <RoiCard
-              label="ROI Cash to Cash Neto"
+              label="ROI Cash on Cash Neto"
               value={result.roi.cashOnCashNetRoi}
               target={0.07}
               desc="Flujo neto tras hipoteca / efectivo aportado"

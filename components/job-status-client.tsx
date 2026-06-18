@@ -144,7 +144,7 @@ function getZoneVerdict(zoneResult: Record<string, any>, opportunities: Array<Re
   return {
     tone,
     title: "El listado si contiene oportunidades para revisar",
-    summary: `La mejor opcion encontrada es ${best.title || "un activo del listado"} con ${formatPercent(best.cashOnCashRoi)} de ROI cash to cash.`,
+    summary: `La mejor opcion encontrada es ${best.title || "un activo del listado"} con ${formatPercent(best.cashOnCashRoi)} de ROI cash on cash.`,
     best,
     analyzedListings: zoneResult?.analyzedListings,
   };
@@ -399,11 +399,11 @@ export function JobStatusClient({
 
           <div className="decision-roi-grid">
             <article className="decision-roi-card">
-              <span>ROI cash to cash</span>
+              <span>ROI cash on cash</span>
               <strong>{formatPercent(listingMetrics.cashOnCashRoi)}</strong>
             </article>
             <article className="decision-roi-card">
-              <span>ROI cash to cash neto</span>
+              <span>ROI cash on cash neto</span>
               <strong>{formatPercent(listingMetrics.cashOnCashNetRoi)}</strong>
             </article>
             <article className="decision-roi-card">
@@ -636,11 +636,11 @@ export function JobStatusClient({
 
           <div className="decision-roi-grid">
             <article className="decision-roi-card">
-              <span>ROI cash to cash</span>
+              <span>ROI cash on cash</span>
               <strong>{formatPercent(zoneVerdict.best.cashOnCashRoi)}</strong>
             </article>
             <article className="decision-roi-card">
-              <span>ROI cash to cash neto</span>
+              <span>ROI cash on cash neto</span>
               <strong>{formatPercent(zoneVerdict.best.cashOnCashNetRoi)}</strong>
             </article>
             <article className="decision-roi-card">

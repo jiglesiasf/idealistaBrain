@@ -29,8 +29,8 @@ type Opportunity = {
 
 const columnHelper = createColumnHelper<Opportunity>();
 const METRIC_OPTIONS = [
-  { key: "cashOnCashRoi", label: "ROI cash to cash" },
-  { key: "cashOnCashNetRoi", label: "ROI cash to cash neto" },
+  { key: "cashOnCashRoi", label: "ROI cash on cash" },
+  { key: "cashOnCashNetRoi", label: "ROI cash on cash neto" },
   { key: "grossRoi", label: "ROI bruto" },
   { key: "netRoi", label: "ROI neto" },
 ] as const;
@@ -112,11 +112,11 @@ function buildOpportunityFacts(opportunity: Opportunity) {
 function buildOpportunityRois(opportunity: Opportunity) {
   return [
     {
-      label: "ROI cash to cash",
+      label: "ROI cash on cash",
       value: formatPercent(opportunity.cashOnCashRoi),
     },
     {
-      label: "ROI cash to cash neto",
+      label: "ROI cash on cash neto",
       value: formatPercent(opportunity.cashOnCashNetRoi),
     },
     {
@@ -133,7 +133,7 @@ function buildOpportunityRois(opportunity: Opportunity) {
 export function OpportunityTable({ opportunities }: { opportunities: Opportunity[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "cashOnCashRoi", desc: true }]);
   const selectedMetric = (METRIC_OPTIONS.find((option) => option.key === sorting[0]?.id)?.key ?? "cashOnCashRoi") as OpportunityMetricKey;
-  const selectedMetricLabel = METRIC_OPTIONS.find((option) => option.key === selectedMetric)?.label ?? "ROI cash to cash";
+  const selectedMetricLabel = METRIC_OPTIONS.find((option) => option.key === selectedMetric)?.label ?? "ROI cash on cash";
 
   const table = useReactTable({
     data: opportunities,

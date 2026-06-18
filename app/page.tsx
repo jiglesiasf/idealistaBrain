@@ -89,7 +89,7 @@ export default async function HomePage() {
             <p className="panel-title">Resultados útiles para decidir mejor.</p>
             <ul className="mini-list">
               <li>Renta estimada a partir de comparables reales.</li>
-              <li>ROI cash to cash, cash to cash neto, bruto y neto.</li>
+              <li>ROI cash on cash, cash on cash neto, bruto y neto.</li>
               <li>Ranking de oportunidades cuando trabajas sobre listados completos.</li>
             </ul>
             <p className="fine-print">La parte técnica debe pasar desapercibida. Aquí importa si la oportunidad es buena o no.</p>
