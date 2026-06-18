@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { calculateTargetPrice, calculateTargetRent } from "@/lib/calculator/engine";
+import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/engine";
 import type { RadarSummary, RadarListingSummary } from "@/lib/alerts/contracts";
 import { dispatchToCompanion, pingCompanion } from "@/lib/companion/client";
 
@@ -16,11 +18,6 @@ function formatPercent(value?: number | null) {
   return typeof value === "number" && Number.isFinite(value)
     ? `${(value * 100).toFixed(1)}%`
     : "n/d";
-}
-
-function pricePerSqm(price?: number | null, sqmeters?: number | null) {
-  if (price && sqmeters && sqmeters > 0) return formatCurrency(price / sqmeters);
-  return "n/d";
 }
 
 function calculatorUrl(listing: RadarListingSummary) {
@@ -38,6 +35,33 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+const TARGET_FINANCIAL: Omit<CalculatorInput, "price" | "monthlyRent"> = {
+  itpRate: 0.10,
+  notaryRegistry: 2000,
+  mortgageFees: 350,
+  renovationCost: 0,
+  purchaseCommission: 0,
+  furnitureOther: 1000,
+  loanToValue: 0.8,
+  interestRate: 0.028,
+  mortgageTermYears: 25,
+  ibiBasuras: 300,
+  insurance: 300,
+  community: 360,
+  maintenance: 250,
+  vacancyMonths: 1,
+};
+
+function computeTargetPrice(price: number | null, rent: number | null): TargetPrice {
+  if (!price || !rent || rent <= 0) return null;
+  return calculateTargetPrice({ price, monthlyRent: rent, ...TARGET_FINANCIAL });
+}
+
+function computeTargetRent(price: number | null, rent: number | null): TargetRent {
+  if (!price || price <= 0) return null;
+  return calculateTargetRent({ price, monthlyRent: rent ?? 0, ...TARGET_FINANCIAL });
 }
 
 type ScanJobResponse = {
@@ -102,9 +126,9 @@ export function RadarDetailClient({
     }
   };
 
-  const newListings = listings.filter((l) => l.isNew);
-  const scannedListings = listings.filter((l) => l.source === "scan" && !l.isNew);
-  const alertListings = listings.filter((l) => l.source === "alert");
+  const sortedListings = useMemo(() => {
+    return [...listings].sort((a, b) => new Date(b.firstSeenAt).getTime() - new Date(a.firstSeenAt).getTime());
+  }, [listings]);
 
   return (
     <div className="stack">
@@ -140,7 +164,7 @@ export function RadarDetailClient({
         <div className="kpi-grid compact-kpi-grid">
           <article className="kpi-card compact-kpi-card">
             <span className="kpi-label">Nuevas oportunidades</span>
-            <strong className="kpi-value">{newListings.length}</strong>
+            <strong className="kpi-value">{listings.filter((l) => l.isNew).length}</strong>
           </article>
           <article className="kpi-card compact-kpi-card">
             <span className="kpi-label">Escaneos realizados</span>
@@ -159,115 +183,54 @@ export function RadarDetailClient({
         </div>
       </section>
 
-      {newListings.length > 0 && (
+      {sortedListings.length > 0 ? (
         <section className="card">
           <div className="card-header">
-            <span className="section-label">🆕 Nuevas oportunidades</span>
-            <h2 className="card-title">Recién detectadas ({newListings.length})</h2>
+            <span className="section-label">📋 Listings</span>
+            <h2 className="card-title">{listings.length} propiedades</h2>
           </div>
-          <div className="radar-listings-list">
-            {newListings.map((listing) => (
-              <article key={listing.id} className={`opportunity-spotlight-card ${listing.cashOnCashNetRoi !== null && listing.cashOnCashNetRoi >= 0.05 ? "tone-green" : "tone-neutral"}`}>
-                <div className="radar-listing-row">
-                  <div className="radar-listing-info">
-                    <strong>{listing.title ?? "Sin título"}</strong>
-                    <div className="job-meta">
-                      <span>{formatCurrency(listing.priceEur)}</span>
-                      {listing.sqmeters && <span>{listing.sqmeters} m²</span>}
-                      <span>{pricePerSqm(listing.priceEur, listing.sqmeters)}/m²</span>
-                      {listing.bedrooms && <span>{listing.bedrooms} hab</span>}
-                      {listing.bathrooms && <span>{listing.bathrooms} baños</span>}
-                      <span className="radar-source-badge">{listing.source === "alert" ? "📧 Alerta" : "🔎 Escaneo"}</span>
-                    </div>
-                    <div className="job-meta">
-                      <span>Detectado {formatDate(listing.firstSeenAt)}</span>
-                    </div>
-                    <div className="job-meta">
-                      {listing.estimatedRentEur !== null && <span>Alquiler est.: {formatCurrency(listing.estimatedRentEur)}/mes</span>}
-                      {listing.grossRoi !== null && <span>ROI bruto: {formatPercent(listing.grossRoi)}</span>}
-                      {listing.netRoi !== null && <span>ROI neto: {formatPercent(listing.netRoi)}</span>}
-                      {listing.cashOnCashRoi !== null && <span>Cash-on-cash: {formatPercent(listing.cashOnCashRoi)}</span>}
-                      {listing.cashOnCashNetRoi !== null && <span>C2C neto: {formatPercent(listing.cashOnCashNetRoi)}</span>}
-                    </div>
-                  </div>
-
-                  <div className="radar-listing-actions">
-                    <a
-                      href={listing.listingUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="job-url-link"
-                    >
-                      Abrir en Idealista
-                    </a>
-                    <Link href={calculatorUrl(listing)} className="job-url-link">
-                      Abrir en calculadora
-                    </Link>
-                    {listing.linkedJobId && (
-                      <Link href={`/jobs/${listing.linkedJobId}`} className="job-url-link">
-                        Análisis
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
+          <div className="table-shell">
+            <table className="data-table radar-table">
+              <thead>
+                <tr>
+                  <th>Propiedad</th>
+                  <th>Precio</th>
+                  <th>Renta est.</th>
+                  <th>ROI bruto</th>
+                  <th>C2C neto</th>
+                  <th>Precio ideal 7%</th>
+                  <th>Renta ideal 7%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedListings.map((listing) => {
+                  const targetPrice = computeTargetPrice(listing.priceEur, listing.estimatedRentEur);
+                  const targetRent = computeTargetRent(listing.priceEur, listing.estimatedRentEur);
+                  return (
+                    <tr key={listing.id}>
+                      <td className="radar-table-title">
+                        <div className="radar-table-title-inner">
+                          <span className="radar-table-listing-title">{listing.title ?? "Sin título"}</span>
+                          <div className="radar-table-links">
+                            <a href={listing.listingUrl} target="_blank" rel="noreferrer noopener">Idealista</a>
+                            <Link href={calculatorUrl(listing)}>Calculadora</Link>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="radar-table-num">{formatCurrency(listing.priceEur)}</td>
+                      <td className="radar-table-num">{listing.estimatedRentEur !== null ? formatCurrency(listing.estimatedRentEur) + "/mes" : "n/d"}</td>
+                      <td className="radar-table-num">{formatPercent(listing.grossRoi)}</td>
+                      <td className="radar-table-num">{formatPercent(listing.cashOnCashNetRoi)}</td>
+                      <td className="radar-table-num">{targetPrice ? formatCurrency(targetPrice.targetPrice) : "—"}</td>
+                      <td className="radar-table-num">{targetRent ? formatCurrency(targetRent.targetRent) + "/mes" : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
-      )}
-
-      {scannedListings.length > 0 && (
-        <section className="card">
-          <div className="card-header">
-            <span className="section-label">📋 Historial de escaneos</span>
-            <h2 className="card-title">Listings capturados ({scannedListings.length})</h2>
-          </div>
-          <div className="radar-listings-list">
-            {scannedListings.map((listing) => (
-              <article key={listing.id} className="opportunity-spotlight-card tone-neutral">
-                <div className="radar-listing-row">
-                  <div className="radar-listing-info">
-                    <strong>{listing.title ?? "Sin título"}</strong>
-                    <div className="job-meta">
-                      <span>{formatCurrency(listing.priceEur)}</span>
-                      {listing.sqmeters && <span>{listing.sqmeters} m²</span>}
-                      <span>{pricePerSqm(listing.priceEur, listing.sqmeters)}/m²</span>
-                      {listing.bedrooms && <span>{listing.bedrooms} hab</span>}
-                      {listing.bathrooms && <span>{listing.bathrooms} baños</span>}
-                    </div>
-                    <div className="job-meta">
-                      <span>Visto {formatDate(listing.lastSeenAt)}</span>
-                    </div>
-                    <div className="job-meta">
-                      {listing.estimatedRentEur !== null && <span>Alquiler est.: {formatCurrency(listing.estimatedRentEur)}/mes</span>}
-                      {listing.grossRoi !== null && <span>ROI bruto: {formatPercent(listing.grossRoi)}</span>}
-                      {listing.netRoi !== null && <span>ROI neto: {formatPercent(listing.netRoi)}</span>}
-                      {listing.cashOnCashRoi !== null && <span>Cash-on-cash: {formatPercent(listing.cashOnCashRoi)}</span>}
-                      {listing.cashOnCashNetRoi !== null && <span>C2C neto: {formatPercent(listing.cashOnCashNetRoi)}</span>}
-                    </div>
-                  </div>
-
-                  <div className="radar-listing-actions">
-                    <a
-                      href={listing.listingUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="job-url-link"
-                    >
-                      Abrir en Idealista
-                    </a>
-                    <Link href={calculatorUrl(listing)} className="job-url-link">
-                      Abrir en calculadora
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {listings.length === 0 && (
+      ) : (
         <div className="card empty-state">
           <p>Este radar todavía no tiene listings.</p>
           <p className="muted">Haz un escaneo o espera a que lleguen alertas de Idealista.</p>
