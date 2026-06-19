@@ -68,6 +68,7 @@
     "benidorm": { cityAvg: { rentPerM2: 18.8, source: "idealista/data" } },
     "alboraia": { cityAvg: { rentPerM2: 17.3, source: "idealista/data" } },
     "alboraya": { cityAvg: { rentPerM2: 17.3, source: "idealista/data" } },
+    "alcoy-alcoi": { cityAvg: { rentPerM2: 8.2, source: "idealista/data" } },
   });
 
   function lookupReferencePrice(municipality, district) {
