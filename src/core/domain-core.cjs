@@ -170,6 +170,10 @@
     return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
   }
 
+  function weightedPercentile(sortedValues, weights, q) {
+    return null; // stub
+  }
+
   function roundMoney(value) {
     return Math.round(value);
   }
@@ -636,6 +640,7 @@
     DEFAULT_PROFITABILITY_ASSUMPTIONS,
     ROI_SORT_OPTIONS,
     buildSearchStrategy,
+    weightedPercentile,
     buildComparableRules,
     buildGuardrails,
     getComparableRejectionReason,
