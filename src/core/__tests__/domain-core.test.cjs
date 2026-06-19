@@ -40,3 +40,37 @@ describe('weightedPercentile', () => {
     expect(core.weightedPercentile(values, weights, 0.5)).toBe(30);
   });
 });
+
+describe('detectOutliers', () => {
+  it('returns empty array when no outliers (tight cluster)', () => {
+    const values = [10, 11, 12, 13, 14, 15, 16, 17];
+    const result = core.detectOutliers(values);
+    expect(result).toEqual([]);
+  });
+
+  it('detects a clear outlier with MAD method (n >= 8)', () => {
+    const values = [10, 11, 12, 13, 14, 15, 16, 100];
+    const result = core.detectOutliers(values);
+    expect(result).toEqual([7]); // index of 100
+  });
+
+  it('uses IQR fence for small samples (n < 8)', () => {
+    const values = [5, 6, 7, 8, 9, 50];
+    const result = core.detectOutliers(values);
+    expect(result).toEqual([5]); // index of 50
+  });
+
+  it('returns empty for small sample without outliers', () => {
+    const values = [5, 6, 7, 8, 9, 10];
+    const result = core.detectOutliers(values);
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty for empty array', () => {
+    expect(core.detectOutliers([])).toEqual([]);
+  });
+
+  it('returns empty for single-element array', () => {
+    expect(core.detectOutliers([42])).toEqual([]);
+  });
+});

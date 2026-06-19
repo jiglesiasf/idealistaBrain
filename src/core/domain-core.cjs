@@ -181,6 +181,42 @@
     return weightedPercentile(sortedValues, uniformWeights, q);
   }
 
+  function median(sortedValues) {
+    if (sortedValues.length === 0) return null;
+    return percentile(sortedValues, 0.5);
+  }
+
+  function detectOutliers(values) {
+    if (values.length < 3) return [];
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const med = median(sorted);
+
+    if (sorted.length >= 8) {
+      // MAD method
+      const deviations = sorted.map(v => Math.abs(v - med));
+      const mad = median(deviations.sort((a, b) => a - b));
+      const threshold = 3 * mad * 1.4826;
+      if (threshold <= 0) return [];
+      return values.reduce((indices, v, i) => {
+        if (Math.abs(v - med) > threshold) indices.push(i);
+        return indices;
+      }, []);
+    }
+
+    // IQR fence
+    const q1 = percentile(sorted, 0.25);
+    const q3 = percentile(sorted, 0.75);
+    const iqr = q3 - q1;
+    if (iqr <= 0) return [];
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+    return values.reduce((indices, v, i) => {
+      if (v < lower || v > upper) indices.push(i);
+      return indices;
+    }, []);
+  }
+
   function roundMoney(value) {
     return Math.round(value);
   }
@@ -648,6 +684,7 @@
     ROI_SORT_OPTIONS,
     buildSearchStrategy,
     weightedPercentile,
+    detectOutliers,
     buildComparableRules,
     buildGuardrails,
     getComparableRejectionReason,
