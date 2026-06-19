@@ -149,29 +149,36 @@
     return ratio <= tolerance;
   }
 
-  function percentile(sortedValues, q) {
-    if (sortedValues.length === 0) {
-      return null;
+  function weightedPercentile(sortedValues, weights, q) {
+    if (sortedValues.length === 0) return null;
+
+    const pairs = [];
+    for (let i = 0; i < sortedValues.length; i++) {
+      if (weights[i] > 0) {
+        pairs.push({ value: sortedValues[i], weight: weights[i] });
+      }
     }
 
-    if (sortedValues.length === 1) {
-      return sortedValues[0];
+    if (pairs.length === 0) return null;
+    if (pairs.length === 1) return pairs[0].value;
+
+    const totalWeight = pairs.reduce((sum, p) => sum + p.weight, 0);
+    const target = q * totalWeight;
+    let cumulative = 0;
+
+    for (let i = 0; i < pairs.length; i++) {
+      cumulative += pairs[i].weight;
+      if (cumulative >= target) {
+        return pairs[i].value;
+      }
     }
 
-    const index = (sortedValues.length - 1) * q;
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-
-    if (lower === upper) {
-      return sortedValues[lower];
-    }
-
-    const weight = index - lower;
-    return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+    return pairs[pairs.length - 1].value;
   }
 
-  function weightedPercentile(sortedValues, weights, q) {
-    return null; // stub
+  function percentile(sortedValues, q) {
+    const uniformWeights = sortedValues.map(() => 1);
+    return weightedPercentile(sortedValues, uniformWeights, q);
   }
 
   function roundMoney(value) {
