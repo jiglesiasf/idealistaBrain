@@ -2332,32 +2332,6 @@ button {
   font-size: 0.8rem;
 }
 
-.calc-comps-table th:first-child,
-.calc-comps-table td:first-child {
-  padding-left: 0;
-}
-
-.calc-comps-table th:last-child,
-.calc-comps-table td:last-child {
-  padding-right: 0;
-}
-
-.calc-comp-link {
-  font-size: 0.82rem;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.calc-comp-link:hover {
-  text-decoration: underline;
-}
-
-.calc-comp-num {
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .calculator-layout {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
@@ -2429,4 +2403,219 @@ button {
 
 .calc-roi-grid {
   gap: 8px;
+}
+
+/* ── Confidence signals (inline summary) ────────────────── */
+
+.calc-confidence-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.calc-conf-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.calc-conf-low {
+  background: rgba(234, 87, 63, 0.12);
+  color: rgb(186, 55, 33);
+}
+
+.calc-conf-medium {
+  background: rgba(240, 180, 40, 0.14);
+  color: rgb(170, 120, 10);
+}
+
+.calc-conf-high {
+  background: rgba(62, 173, 101, 0.12);
+  color: rgb(32, 130, 65);
+}
+
+.calc-conf-stat strong {
+  color: var(--ink);
+  font-weight: 640;
+}
+
+/* ── Confidence/score shared colors ─────────────────────── */
+
+.score-high {
+  color: rgb(32, 130, 65);
+}
+
+.score-mid {
+  color: rgb(170, 120, 10);
+}
+
+.score-low {
+  color: rgb(186, 55, 33);
+}
+
+/* ── Comparable modal (confidence header) ────────────────── */
+
+.calc-comps-modal {
+  max-width: 800px;
+}
+
+.calc-comps-confidence {
+  margin-bottom: 1rem;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.calc-comps-conf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calc-comps-conf-score {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 720;
+  letter-spacing: -0.03em;
+}
+
+.calc-comps-conf-score.score-high {
+  background: rgba(62, 173, 101, 0.12);
+}
+
+.calc-comps-conf-score.score-mid {
+  background: rgba(240, 180, 40, 0.14);
+}
+
+.calc-comps-conf-score.score-low {
+  background: rgba(234, 87, 63, 0.12);
+}
+
+.calc-comps-conf-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calc-comps-conf-label {
+  font-size: 0.82rem;
+  font-weight: 640;
+  color: var(--ink);
+}
+
+.calc-comps-conf-note {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.calc-comps-conf-range {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.calc-comps-conf-range strong {
+  color: var(--ink);
+}
+
+/* ── Comparable modal (table) ────────────────────────────── */
+
+.calc-comps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.calc-comps-table th,
+.calc-comps-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(17, 18, 20, 0.08);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.calc-comps-table th {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calc-comps-table th:first-child,
+.calc-comps-table td:first-child {
+  padding-left: 0;
+}
+
+.calc-comps-table th:last-child,
+.calc-comps-table td:last-child {
+  padding-right: 0;
+}
+
+.calc-comp-link {
+  font-size: 0.78rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.calc-comp-link:hover {
+  text-decoration: underline;
+}
+
+.calc-comp-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-comp-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 660;
+}
+
+.calc-comp-score.score-high {
+  background: rgba(62, 173, 101, 0.10);
+}
+
+.calc-comp-score.score-mid {
+  background: rgba(240, 180, 40, 0.12);
+}
+
+.calc-comp-score.score-low {
+  background: rgba(234, 87, 63, 0.10);
+}
+
+.calc-comp-scope {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  font-size: 0.68rem;
+  text-transform: capitalize;
 }

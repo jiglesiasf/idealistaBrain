@@ -5,6 +5,17 @@ import { calculate, calculateTargetPrice, calculateTargetRent } from "@/lib/calc
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
 import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/engine";
 
+type ConfidenceSignals = {
+  score: number;
+  effectiveSampleSize: number;
+  coefficientOfVariation: number;
+  dispersionLabel: string;
+  stateAdjusted: boolean;
+  adjustmentFactor: number | null;
+  comparablesAfterOutlierRemoval: number;
+  outliersRemoved: number;
+};
+
 type ComparableData = {
   title: string;
   url: string;
@@ -12,6 +23,10 @@ type ComparableData = {
   areaM2: number | null;
   rooms: number | null;
   pricePerM2: number | null;
+  score: number | null;
+  scope: string;
+  state: string | null;
+  zone: string | null;
 };
 
 const EXTENSION_ID = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
@@ -188,6 +203,12 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     state: string | null;
     referenceRent: number | null;
     referencePricePerM2: number | null;
+    confidence: string | null;
+    lowEur: number | null;
+    highEur: number | null;
+    method: string | null;
+    comparablesUsed: number | null;
+    confidenceSignals: ConfidenceSignals | null;
     importedUrl: string;
     comparables: ComparableData[];
   } | null>(null);
@@ -328,7 +349,10 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             price: number | null; rent: number | null; community: string | null; province: string | null;
             area: number | null; rooms: number | null; propertyType: string | null; state: string | null;
             referenceRent: number | null; referencePricePerM2: number | null;
-          } = { price: null, rent: null, community: null, province: null, area: null, rooms: null, propertyType: null, state: null, referenceRent: null, referencePricePerM2: null };
+            confidence: string | null; lowEur: number | null; highEur: number | null;
+            method: string | null; comparablesUsed: number | null;
+            confidenceSignals: ConfidenceSignals | null;
+          } = { price: null, rent: null, community: null, province: null, area: null, rooms: null, propertyType: null, state: null, referenceRent: null, referencePricePerM2: null, confidence: null, lowEur: null, highEur: null, method: null, comparablesUsed: null, confidenceSignals: null };
 
           if (targetAsset?.priceEur && typeof targetAsset.priceEur === "number") {
             imported.price = targetAsset.priceEur;
@@ -381,6 +405,35 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           if (estimate?.referencePricePerM2 && typeof estimate.referencePricePerM2 === "number") {
             imported.referencePricePerM2 = estimate.referencePricePerM2;
           }
+          if (estimate?.confidence && typeof estimate.confidence === "string") {
+            imported.confidence = estimate.confidence;
+          }
+          if (estimate?.lowEur && typeof estimate.lowEur === "number") {
+            imported.lowEur = estimate.lowEur;
+          }
+          if (estimate?.highEur && typeof estimate.highEur === "number") {
+            imported.highEur = estimate.highEur;
+          }
+          if (estimate?.method && typeof estimate.method === "string") {
+            imported.method = estimate.method;
+          }
+          if (estimate?.comparablesUsed && typeof estimate.comparablesUsed === "number") {
+            imported.comparablesUsed = estimate.comparablesUsed;
+          }
+
+          const rawSignals = estimate?.confidenceSignals as Record<string, unknown> | undefined;
+          if (rawSignals && typeof rawSignals.score === "number") {
+            imported.confidenceSignals = {
+              score: rawSignals.score,
+              effectiveSampleSize: typeof rawSignals.effectiveSampleSize === "number" ? rawSignals.effectiveSampleSize : 0,
+              coefficientOfVariation: typeof rawSignals.coefficientOfVariation === "number" ? rawSignals.coefficientOfVariation : 0,
+              dispersionLabel: typeof rawSignals.dispersionLabel === "string" ? rawSignals.dispersionLabel : "",
+              stateAdjusted: rawSignals.stateAdjusted === true,
+              adjustmentFactor: typeof rawSignals.adjustmentFactor === "number" ? rawSignals.adjustmentFactor : null,
+              comparablesAfterOutlierRemoval: typeof rawSignals.comparablesAfterOutlierRemoval === "number" ? rawSignals.comparablesAfterOutlierRemoval : 0,
+              outliersRemoved: typeof rawSignals.outliersRemoved === "number" ? rawSignals.outliersRemoved : 0,
+            };
+          }
 
           const rawComparables = payload?.comparables as Array<Record<string, unknown>> | undefined;
           const comparables: ComparableData[] = (rawComparables ?? []).map((c) => ({
@@ -390,6 +443,10 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             areaM2: typeof c.areaM2 === "number" ? c.areaM2 : null,
             rooms: typeof c.rooms === "number" ? c.rooms : null,
             pricePerM2: typeof c.pricePerM2 === "number" ? c.pricePerM2 : typeof c.rentPerM2 === "number" ? c.rentPerM2 : null,
+            score: typeof c.score === "number" ? c.score : null,
+            scope: typeof c.scope === "string" ? c.scope : "",
+            state: typeof c.state === "string" ? c.state : null,
+            zone: typeof c.zone === "string" ? c.zone : null,
           })).filter((c) => c.url);
 
           setImportResult({ ...imported, importedUrl: url, comparables });
@@ -478,6 +535,29 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                   {importResult.propertyType ? <><span>Tipo</span><strong>{importResult.propertyType}</strong></> : null}
                   {importResult.state ? <><span>Estado</span><strong>{importResult.state}</strong></> : null}
                 </div>
+                {importResult.confidenceSignals ? (
+                  <div className="calc-confidence-strip">
+                    <span className={`calc-conf-badge calc-conf-${importResult.confidence ?? "low"}`}>
+                      {(importResult.confidence ?? "").toUpperCase() || "—"}
+                    </span>
+                    <span className="calc-conf-stat">
+                      Puntuación <strong>{importResult.confidenceSignals.score}</strong>/100
+                    </span>
+                    <span className="calc-conf-stat">
+                      Dispersión <strong>{importResult.confidenceSignals.dispersionLabel}</strong>
+                    </span>
+                    {importResult.confidenceSignals.outliersRemoved > 0 ? (
+                      <span className="calc-conf-stat">
+                        Atípicos <strong>{importResult.confidenceSignals.outliersRemoved}</strong>
+                      </span>
+                    ) : null}
+                    {importResult.confidenceSignals.adjustmentFactor != null && importResult.confidenceSignals.adjustmentFactor !== 1 ? (
+                      <span className="calc-conf-stat">
+                        Ajuste estado <strong>{importResult.confidenceSignals.adjustmentFactor.toFixed(2)}×</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {initialIdealistaUrl && !importResult ? (
@@ -794,19 +874,47 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
 
       {showComparables && importResult?.comparables ? (
         <div className="modal-overlay" onClick={() => setShowComparables(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "700px" }}>
+          <div className="modal-card calc-comps-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Comparables utilizados ({importResult.comparables.length})</h3>
               <button type="button" className="modal-close" onClick={() => setShowComparables(false)}>✕</button>
             </div>
+            {importResult.confidenceSignals ? (
+              <div className="calc-comps-confidence">
+                <div className="calc-comps-conf-row">
+                  <span className={`calc-comps-conf-score ${importResult.confidenceSignals.score >= 70 ? "score-high" : importResult.confidenceSignals.score >= 40 ? "score-mid" : "score-low"}`}>
+                    {importResult.confidenceSignals.score}
+                  </span>
+                  <div className="calc-comps-conf-details">
+                    <span className="calc-comps-conf-label">
+                      Confianza {(importResult.confidence ?? "").toUpperCase()} · {importResult.confidenceSignals.dispersionLabel} dispersión
+                    </span>
+                    <span className="calc-comps-conf-note">
+                      {importResult.confidenceSignals.comparablesAfterOutlierRemoval} comparables tras eliminar {importResult.confidenceSignals.outliersRemoved} atípicos
+                      {importResult.confidenceSignals.stateAdjusted && importResult.confidenceSignals.adjustmentFactor != null
+                        ? ` · ajuste estado ×${importResult.confidenceSignals.adjustmentFactor.toFixed(2)}`
+                        : ""}
+                      {importResult.method ? ` · ${importResult.method}` : ""}
+                    </span>
+                  </div>
+                </div>
+                {importResult.lowEur != null && importResult.highEur != null ? (
+                  <div className="calc-comps-conf-range">
+                    Rango típico: <strong>{fmt(importResult.lowEur)}–{fmt(importResult.highEur)} €/mes</strong>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="table-shell">
-              <table className="data-table calc-comps-table">
+              <table className="calc-comps-table">
                 <thead>
                   <tr>
                     <th>Inmueble</th>
-                    <th>Hab.</th>
-                    <th>Metros</th>
-                    <th>Precio/m²</th>
+                    <th className="calc-comp-num">Punt.</th>
+                    <th>Ámbito</th>
+                    <th className="calc-comp-num">Hab.</th>
+                    <th className="calc-comp-num">m²</th>
+                    <th className="calc-comp-num">€/m²</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -817,9 +925,17 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                           {comp.title || "Ver inmueble"}
                         </a>
                       </td>
+                      <td className="calc-comp-num">
+                        {comp.score != null ? (
+                          <span className={`calc-comp-score ${comp.score >= 50 ? "score-high" : comp.score >= 30 ? "score-mid" : "score-low"}`}>
+                            {comp.score}
+                          </span>
+                        ) : <span className="muted">—</span>}
+                      </td>
+                      <td>{comp.scope ? <span className="calc-comp-scope">{comp.scope}</span> : "—"}</td>
                       <td className="calc-comp-num">{comp.rooms ?? "—"}</td>
-                      <td className="calc-comp-num">{comp.areaM2 ? `${comp.areaM2} m²` : "—"}</td>
-                      <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2} €/m²` : "—"}</td>
+                      <td className="calc-comp-num">{comp.areaM2 ? fmt(comp.areaM2) : "—"}</td>
+                      <td className="calc-comp-num">{comp.pricePerM2 ? `${comp.pricePerM2}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
