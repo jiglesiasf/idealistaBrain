@@ -214,6 +214,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
   } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showComparables, setShowComparables] = useState(false);
+  const [showScoreHelp, setShowScoreHelp] = useState(false);
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrice = useMemo(() => calculateTargetPrice(input), [input]);
@@ -910,8 +911,21 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                 <thead>
                   <tr>
                     <th>Inmueble</th>
-                    <th className="calc-comp-num">Punt.</th>
-                    <th>Ámbito</th>
+                    <th className="calc-comp-num">
+                      Punt.
+                      <button type="button" className="calc-help-btn" onClick={() => setShowScoreHelp(!showScoreHelp)} aria-label="Explicación de la puntuación">ⓘ</button>
+                      {showScoreHelp ? (
+                        <div className="calc-tooltip">
+                          <strong>Puntuación del comparable</strong> (0–75)
+                          <div className="calc-tooltip-row"><span>Ámbito (misma zona)</span><span className="calc-comp-num">40 pts</span></div>
+                          <div className="calc-tooltip-row"><span>Habitaciones (exactas)</span><span className="calc-comp-num">15 pts</span></div>
+                          <div className="calc-tooltip-row"><span>Superficie (±10%)</span><span className="calc-comp-num">15 pts</span></div>
+                          <div className="calc-tooltip-row"><span>Estado (coincide)</span><span className="calc-comp-num">5 pts</span></div>
+                          <div className="calc-tooltip-row calc-tooltip-note">Más puntuación = más similar al inmueble objetivo</div>
+                        </div>
+                      ) : null}
+                    </th>
+                    <th>Ámbito <button type="button" className="calc-help-btn-inline" aria-label="Qué es ámbito">ⓘ</button></th>
                     <th className="calc-comp-num">Hab.</th>
                     <th className="calc-comp-num">m²</th>
                     <th className="calc-comp-num">€/m²</th>

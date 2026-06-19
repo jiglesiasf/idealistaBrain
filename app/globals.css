@@ -2619,3 +2619,117 @@ button {
   font-size: 0.68rem;
   text-transform: capitalize;
 }
+
+/* ── Comparables table — help button & tooltip ───────────── */
+
+.calc-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--muted);
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.calc-help-btn:hover {
+  color: var(--ink);
+}
+
+.calc-help-btn-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.65rem;
+  cursor: help;
+  color: var(--muted);
+  vertical-align: middle;
+  line-height: 1;
+  position: relative;
+}
+
+.calc-help-btn-inline::after {
+  content: "Ámbito = alcance geográfico de la búsqueda: zona, barrio, distrito, municipio o provincia donde se encontró el comparable.";
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  width: 240px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-strong);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.calc-help-btn-inline:hover::after {
+  display: block;
+}
+
+.calc-tooltip {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  width: 220px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-strong);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.calc-tooltip strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+}
+
+.calc-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.calc-tooltip-note {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(17, 18, 20, 0.08);
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+/* Position the punt. th as relative for absolute tooltip positioning */
+.calc-comps-table th:nth-child(2) {
+  position: relative;
+}
