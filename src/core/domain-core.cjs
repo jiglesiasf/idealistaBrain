@@ -24,6 +24,29 @@
     localTaxesAndCommunityRatio: 0.069,
     insuranceAndIncidentsRatio: 0.031,
   });
+  const STATE_FACTORS = Object.freeze({
+    nuevo: 1.10,
+    reformado: 1.08,
+    "buen-estado": 1.0,
+    regular: 0.92,
+    "para-reformar": 0.82,
+  });
+
+  const STATE_ALIASES = Object.freeze({
+    "nueva-construccion": "nuevo",
+    "nuevo-construccion": "nuevo",
+    "reacondicionado": "reformado",
+    "recien-reformado": "reformado",
+    "a-reformar": "para-reformar",
+    "a-rehabilitar": "para-reformar",
+    "reforma": "para-reformar",
+  });
+
+  function normalizeState(state) {
+    const key = normalizeForCompare(state);
+    return STATE_ALIASES[key] || key;
+  }
+
   const REFERENCE_RENTAL_PRICES = Object.freeze({
     valencia: {
       cityAvg: { rentPerM2: 15.5, source: "idealista/data" },
@@ -438,6 +461,37 @@
     };
   }
 
+  function computeStateAdjustment(subjectState, comparableStates) {
+    if (!subjectState || !comparableStates || comparableStates.length === 0) return 1.0;
+
+    const normalizedSubject = normalizeState(subjectState);
+    const subjectFactor = STATE_FACTORS[normalizedSubject];
+    if (subjectFactor === undefined) return 1.0;
+
+    // Find modal state among comparables
+    const normalizedComparables = comparableStates
+      .filter(Boolean)
+      .map(normalizeState);
+
+    if (normalizedComparables.length === 0) return 1.0;
+
+    const freq = {};
+    let maxFreq = 0;
+    let modeState = null;
+    for (const s of normalizedComparables) {
+      freq[s] = (freq[s] || 0) + 1;
+      if (freq[s] > maxFreq) {
+        maxFreq = freq[s];
+        modeState = s;
+      }
+    }
+
+    const modeFactor = STATE_FACTORS[modeState];
+    if (modeFactor === undefined || modeFactor === 0) return 1.0;
+
+    return subjectFactor / modeFactor;
+  }
+
   function buildRentEstimate(subject, comparables) {
     const pricedComparables = comparables.filter((item) => Number.isFinite(item.priceEur));
 
@@ -685,6 +739,7 @@
     buildSearchStrategy,
     weightedPercentile,
     detectOutliers,
+    computeStateAdjustment,
     buildComparableRules,
     buildGuardrails,
     getComparableRejectionReason,

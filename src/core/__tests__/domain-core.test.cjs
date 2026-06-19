@@ -74,3 +74,39 @@ describe('detectOutliers', () => {
     expect(core.detectOutliers([42])).toEqual([]);
   });
 });
+
+describe('computeStateAdjustment', () => {
+  it('returns 1.0 (no adjustment) when subject state is missing', () => {
+    expect(core.computeStateAdjustment(null, ['buen estado', 'buen estado'])).toBe(1.0);
+    expect(core.computeStateAdjustment(undefined, [])).toBe(1.0);
+  });
+
+  it('returns 1.0 when no comparable states provided', () => {
+    expect(core.computeStateAdjustment('reformado', [])).toBe(1.0);
+  });
+
+  it('adjusts up when subject is reformado and comparables are buen estado', () => {
+    const factor = core.computeStateAdjustment('reformado', ['buen estado', 'buen estado', 'buen estado']);
+    expect(factor).toBeCloseTo(1.08, 2);
+  });
+
+  it('adjusts down when subject is para reformar and comparables are buen estado', () => {
+    const factor = core.computeStateAdjustment('para reformar', ['buen estado', 'buen estado']);
+    expect(factor).toBeCloseTo(0.82, 2);
+  });
+
+  it('returns 1.0 when subject and modal comparable state match', () => {
+    const factor = core.computeStateAdjustment('reformado', ['reformado', 'reformado', 'buen estado']);
+    expect(factor).toBe(1.0);
+  });
+
+  it('handles state aliasing (nueva construccion -> nuevo)', () => {
+    const factor = core.computeStateAdjustment('nueva construccion', ['nuevo', 'nuevo']);
+    expect(factor).toBe(1.0);
+  });
+
+  it('handles state aliasing (reacondicionado -> reformado)', () => {
+    const factor = core.computeStateAdjustment('reacondicionado', ['reformado', 'reformado']);
+    expect(factor).toBe(1.0);
+  });
+});
