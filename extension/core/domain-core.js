@@ -27,6 +27,38 @@
     localTaxesAndCommunityRatio: 0.069,
     insuranceAndIncidentsRatio: 0.031,
   });
+  const STATE_FACTORS = Object.freeze({
+    nuevo: 1.10,
+    reformado: 1.08,
+    "buen-estado": 1.0,
+    regular: 0.92,
+    "para-reformar": 0.82,
+  });
+
+  const STATE_ALIASES = Object.freeze({
+    "nueva-construccion": "nuevo",
+    "nuevo-construccion": "nuevo",
+    "reacondicionado": "reformado",
+    "recien-reformado": "reformado",
+    "a-reformar": "para-reformar",
+    "a-rehabilitar": "para-reformar",
+    "reforma": "para-reformar",
+  });
+
+  const CONFIDENCE_WEIGHTS = Object.freeze({
+    SAMPLE_SIZE: 0.35,
+    DISPERSION: 0.30,
+    COVERAGE: 0.20,
+    REFERENCE: 0.15,
+  });
+
+  const MAX_SCORE = 75;
+
+  function normalizeState(state) {
+    const key = normalizeForCompare(state);
+    return STATE_ALIASES[key] || key;
+  }
+
   const REFERENCE_RENTAL_PRICES = Object.freeze({
     valencia: {
       cityAvg: { rentPerM2: 15.5, source: "idealista/data" },
@@ -152,25 +184,72 @@
     return ratio <= tolerance;
   }
 
+  function weightedPercentile(sortedValues, weights, q) {
+    if (sortedValues.length === 0) return null;
+
+    const pairs = [];
+    for (let i = 0; i < sortedValues.length; i++) {
+      if (weights[i] > 0) {
+        pairs.push({ value: sortedValues[i], weight: weights[i] });
+      }
+    }
+
+    if (pairs.length === 0) return null;
+    if (pairs.length === 1) return pairs[0].value;
+
+    const totalWeight = pairs.reduce((sum, p) => sum + p.weight, 0);
+    const target = q * totalWeight;
+    let cumulative = 0;
+
+    for (let i = 0; i < pairs.length; i++) {
+      cumulative += pairs[i].weight;
+      if (cumulative >= target) {
+        return pairs[i].value;
+      }
+    }
+
+    return pairs[pairs.length - 1].value;
+  }
+
   function percentile(sortedValues, q) {
-    if (sortedValues.length === 0) {
-      return null;
+    const uniformWeights = sortedValues.map(() => 1);
+    return weightedPercentile(sortedValues, uniformWeights, q);
+  }
+
+  function median(sortedValues) {
+    if (sortedValues.length === 0) return null;
+    return percentile(sortedValues, 0.5);
+  }
+
+  function detectOutliers(values) {
+    if (values.length < 3) return [];
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const med = median(sorted);
+
+    if (sorted.length >= 8) {
+      // MAD method
+      const deviations = sorted.map(v => Math.abs(v - med));
+      const mad = median(deviations.sort((a, b) => a - b));
+      const threshold = 3 * mad * 1.4826;
+      if (threshold <= 0) return [];
+      return values.reduce((indices, v, i) => {
+        if (Math.abs(v - med) > threshold) indices.push(i);
+        return indices;
+      }, []);
     }
 
-    if (sortedValues.length === 1) {
-      return sortedValues[0];
-    }
-
-    const index = (sortedValues.length - 1) * q;
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-
-    if (lower === upper) {
-      return sortedValues[lower];
-    }
-
-    const weight = index - lower;
-    return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+    // IQR fence
+    const q1 = percentile(sorted, 0.25);
+    const q3 = percentile(sorted, 0.75);
+    const iqr = q3 - q1;
+    if (iqr <= 0) return [];
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+    return values.reduce((indices, v, i) => {
+      if (v < lower || v > upper) indices.push(i);
+      return indices;
+    }, []);
   }
 
   function roundMoney(value) {
@@ -394,6 +473,37 @@
     };
   }
 
+  function computeStateAdjustment(subjectState, comparableStates) {
+    if (!subjectState || !comparableStates || comparableStates.length === 0) return 1.0;
+
+    const normalizedSubject = normalizeState(subjectState);
+    const subjectFactor = STATE_FACTORS[normalizedSubject];
+    if (subjectFactor === undefined) return 1.0;
+
+    // Find modal state among comparables
+    const normalizedComparables = comparableStates
+      .filter(Boolean)
+      .map(normalizeState);
+
+    if (normalizedComparables.length === 0) return 1.0;
+
+    const freq = {};
+    let maxFreq = 0;
+    let modeState = null;
+    for (const s of normalizedComparables) {
+      freq[s] = (freq[s] || 0) + 1;
+      if (freq[s] > maxFreq) {
+        maxFreq = freq[s];
+        modeState = s;
+      }
+    }
+
+    const modeFactor = STATE_FACTORS[modeState];
+    if (modeFactor === undefined || modeFactor === 0) return 1.0;
+
+    return subjectFactor / modeFactor;
+  }
+
   function buildRentEstimate(subject, comparables) {
     const pricedComparables = comparables.filter((item) => Number.isFinite(item.priceEur));
 
@@ -416,11 +526,7 @@
         referenceDeviationPct: null,
       };
 
-      if (
-        referenceMonthlyRentEur &&
-        Number.isFinite(common.monthlyRentEur) &&
-        referenceMonthlyRentEur > 0
-      ) {
+      if (referenceMonthlyRentEur && Number.isFinite(common.monthlyRentEur) && referenceMonthlyRentEur > 0) {
         result.referenceDeviationPct = roundMoney(
           ((common.monthlyRentEur - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
         );
@@ -431,12 +537,22 @@
 
     if (pricedComparables.length === 0) {
       return addReference({
-        confidence: "low",
+        confidence: 'low',
         comparablesUsed: 0,
         monthlyRentEur: null,
         lowEur: null,
         highEur: null,
-        method: "Sin comparables validos con precio.",
+        method: 'Sin comparables validos con precio.',
+        confidenceSignals: {
+          score: 0,
+          effectiveSampleSize: 0,
+          coefficientOfVariation: 0,
+          dispersionLabel: 'alta',
+          stateAdjusted: false,
+          adjustmentFactor: null,
+          comparablesAfterOutlierRemoval: 0,
+          outliersRemoved: 0,
+        },
       });
     }
 
@@ -444,30 +560,100 @@
     const subjectArea = subject.targetAsset?.areaM2;
 
     if (perM2Comparables.length >= 3 && Number.isFinite(subjectArea)) {
-      const rentsPerM2 = perM2Comparables.map((item) => item.rentPerM2).sort((left, right) => left - right);
-      const basePerM2 = percentile(rentsPerM2, 0.5);
-      const lowPerM2 = percentile(rentsPerM2, 0.25);
-      const highPerM2 = percentile(rentsPerM2, 0.75);
+      const paired = perM2Comparables
+        .map((item, i) => ({ value: item.rentPerM2, score: item.score || 0 }))
+        .sort((a, b) => a.value - b.value);
+      const sortedValues = paired.map(p => p.value);
+      const sortedScores = paired.map(p => p.score);
 
-      return addReference({
-        confidence: pricedComparables.length >= TARGET_COMPARABLES ? "high" : "medium",
-        comparablesUsed: pricedComparables.length,
-        monthlyRentEur: roundMoney(basePerM2 * subjectArea),
-        lowEur: roundMoney(lowPerM2 * subjectArea),
-        highEur: roundMoney(highPerM2 * subjectArea),
-        method: "Mediana de €/m2 de comparables validos.",
-      });
+      const outlierIndices = detectOutliers(sortedValues);
+      const outlierValues = new Set(outlierIndices);
+      const cleanedValues = sortedValues.filter((_, i) => !outlierValues.has(i));
+      const cleanedScores = sortedScores.filter((_, i) => !outlierValues.has(i));
+
+      if (cleanedValues.length >= 3) {
+        const weights = cleanedScores.map(s => Math.max(s, 1));
+        const basePerM2 = weightedPercentile(cleanedValues, weights, 0.5);
+        const lowPerM2 = weightedPercentile(cleanedValues, weights, 0.25);
+        const highPerM2 = weightedPercentile(cleanedValues, weights, 0.75);
+
+        const subjectState = subject.targetAsset?.state;
+        const comparableStates = perM2Comparables.map(c => c.state);
+        const stateFactor = computeStateAdjustment(subjectState, comparableStates);
+
+        const allPairedRents = perM2Comparables.map(c => c.rentPerM2);
+        const mean = allPairedRents.reduce((s, v) => s + v, 0) / allPairedRents.length;
+        const variance = allPairedRents.reduce((s, v) => s + (v - mean) ** 2, 0) / allPairedRents.length;
+        const cv = Math.sqrt(variance) / (mean || 1);
+
+        const baseEstimate = basePerM2 * subjectArea;
+        const adjustedEstimate = baseEstimate * stateFactor;
+        const refDeviation = referenceMonthlyRentEur
+          ? ((adjustedEstimate - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
+          : null;
+
+        const confidenceResult = computeConfidenceScore(pricedComparables, cv, refDeviation, 'perM2');
+
+        const labelMap = confidenceResult.score >= 75 ? 'high' : confidenceResult.score >= 40 ? 'medium' : 'low';
+
+        return addReference({
+          confidence: labelMap,
+          comparablesUsed: pricedComparables.length,
+          monthlyRentEur: roundMoney(adjustedEstimate),
+          lowEur: roundMoney(lowPerM2 * subjectArea * stateFactor),
+          highEur: roundMoney(highPerM2 * subjectArea * stateFactor),
+          method: 'Mediana ponderada de €/m2 de comparables validos.',
+          confidenceSignals: {
+            ...confidenceResult,
+            stateAdjusted: stateFactor !== 1.0,
+            adjustmentFactor: stateFactor !== 1.0 ? roundMoney(stateFactor * 100) / 100 : null,
+            comparablesAfterOutlierRemoval: cleanedValues.length,
+            outliersRemoved: outlierIndices.length,
+          },
+        });
+      }
     }
 
     const rents = pricedComparables.map((item) => item.priceEur).sort((left, right) => left - right);
+    const rentScores = pricedComparables.map((item) => item.score || 0);
+
+    const rentPaired = pricedComparables
+      .map((item, i) => ({ value: item.priceEur, score: item.score || 0 }))
+      .sort((a, b) => a.value - b.value);
+    const sortedRents = rentPaired.map(p => p.value);
+    const sortedRentScores = rentPaired.map(p => p.score);
+    const rentWeights = sortedRentScores.map(s => Math.max(s, 1));
+
+    const directEstimate = weightedPercentile(sortedRents, rentWeights, 0.5);
+    const directLow = weightedPercentile(sortedRents, rentWeights, 0.25);
+    const directHigh = weightedPercentile(sortedRents, rentWeights, 0.75);
+
+    const directMean = rents.reduce((s, v) => s + v, 0) / rents.length;
+    const directVariance = rents.reduce((s, v) => s + (v - directMean) ** 2, 0) / rents.length;
+    const directCv = Math.sqrt(directVariance) / (directMean || 1);
+
+    const refDeviationFallback = referenceMonthlyRentEur && directEstimate
+      ? ((directEstimate - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
+      : null;
+
+    const confidenceResultFallback = computeConfidenceScore(pricedComparables, directCv, refDeviationFallback, 'direct');
+
+    const labelMapFallback = confidenceResultFallback.score >= 75 ? 'high' : confidenceResultFallback.score >= 40 ? 'medium' : 'low';
 
     return addReference({
-      confidence: pricedComparables.length >= TARGET_COMPARABLES ? "medium" : "low",
+      confidence: labelMapFallback,
       comparablesUsed: pricedComparables.length,
-      monthlyRentEur: roundMoney(percentile(rents, 0.5)),
-      lowEur: roundMoney(percentile(rents, 0.25)),
-      highEur: roundMoney(percentile(rents, 0.75)),
-      method: "Mediana directa de rentas mensuales.",
+      monthlyRentEur: roundMoney(directEstimate),
+      lowEur: roundMoney(directLow),
+      highEur: roundMoney(directHigh),
+      method: 'Mediana ponderada directa de rentas mensuales.',
+      confidenceSignals: {
+        ...confidenceResultFallback,
+        stateAdjusted: false,
+        adjustmentFactor: null,
+        comparablesAfterOutlierRemoval: pricedComparables.length,
+        outliersRemoved: 0,
+      },
     });
   }
 
@@ -621,6 +807,58 @@
     return Number.isFinite(value) ? value : -Infinity;
   }
 
+  function computeConfidenceScore(comparables, coefficientOfVariation, referenceDeviationPct, method) {
+    if (comparables.length === 0) {
+      return { score: 0, effectiveSampleSize: 0, coefficientOfVariation: 0, dispersionLabel: 'alta' };
+    }
+
+    const totalScore = comparables.reduce((sum, c) => sum + (c.score || 0), 0);
+    const effectiveSampleSize = totalScore / MAX_SCORE;
+    const sizeScore = Math.min(effectiveSampleSize / 10, 1) * 100;
+
+    const cv = Math.abs(coefficientOfVariation || 0);
+    let dispersionLabel;
+    let dispersionScore;
+    if (cv < 0.15) {
+      dispersionLabel = 'baja';
+      dispersionScore = 100;
+    } else if (cv < 0.30) {
+      dispersionLabel = 'moderada';
+      dispersionScore = 60;
+    } else {
+      dispersionLabel = 'alta';
+      dispersionScore = 20;
+    }
+
+    const goodMatches = comparables.filter(c => (c.score || 0) >= 50).length;
+    const coverageScore = (goodMatches / comparables.length) * 100;
+
+    let refScore = 0;
+    if (Number.isFinite(referenceDeviationPct) && referenceDeviationPct !== null) {
+      const absDev = Math.abs(referenceDeviationPct);
+      if (absDev < 10) refScore = 100;
+      else if (absDev < 20) refScore = 50;
+      else refScore = 20;
+    }
+
+    let rawScore =
+      sizeScore * CONFIDENCE_WEIGHTS.SAMPLE_SIZE +
+      dispersionScore * CONFIDENCE_WEIGHTS.DISPERSION +
+      coverageScore * CONFIDENCE_WEIGHTS.COVERAGE +
+      refScore * CONFIDENCE_WEIGHTS.REFERENCE;
+
+    if (method === 'direct') {
+      rawScore = Math.min(rawScore, 74);
+    }
+
+    return {
+      score: Math.round(rawScore),
+      effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+      coefficientOfVariation: cv,
+      dispersionLabel,
+    };
+  }
+
   function sortZoneOpportunities(opportunities, metricKey) {
     const selectedMetric = ROI_SORT_OPTIONS[metricKey] ? metricKey : "cashOnCashRoi";
 
@@ -639,6 +877,10 @@
     DEFAULT_PROFITABILITY_ASSUMPTIONS,
     ROI_SORT_OPTIONS,
     buildSearchStrategy,
+    weightedPercentile,
+    detectOutliers,
+    computeStateAdjustment,
+    computeConfidenceScore,
     buildComparableRules,
     buildGuardrails,
     getComparableRejectionReason,
