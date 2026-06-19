@@ -42,6 +42,15 @@
     "reforma": "para-reformar",
   });
 
+  const CONFIDENCE_WEIGHTS = Object.freeze({
+    SAMPLE_SIZE: 0.35,
+    DISPERSION: 0.30,
+    COVERAGE: 0.20,
+    REFERENCE: 0.15,
+  });
+
+  const MAX_SCORE = 75;
+
   function normalizeState(state) {
     const key = normalizeForCompare(state);
     return STATE_ALIASES[key] || key;
@@ -719,6 +728,58 @@
     return Number.isFinite(value) ? value : -Infinity;
   }
 
+  function computeConfidenceScore(comparables, coefficientOfVariation, referenceDeviationPct, method) {
+    if (comparables.length === 0) {
+      return { score: 0, effectiveSampleSize: 0, coefficientOfVariation: 0, dispersionLabel: 'alta' };
+    }
+
+    const totalScore = comparables.reduce((sum, c) => sum + (c.score || 0), 0);
+    const effectiveSampleSize = totalScore / MAX_SCORE;
+    const sizeScore = Math.min(effectiveSampleSize / 10, 1) * 100;
+
+    const cv = Math.abs(coefficientOfVariation || 0);
+    let dispersionLabel;
+    let dispersionScore;
+    if (cv < 0.15) {
+      dispersionLabel = 'baja';
+      dispersionScore = 100;
+    } else if (cv < 0.30) {
+      dispersionLabel = 'moderada';
+      dispersionScore = 60;
+    } else {
+      dispersionLabel = 'alta';
+      dispersionScore = 20;
+    }
+
+    const goodMatches = comparables.filter(c => (c.score || 0) >= 50).length;
+    const coverageScore = (goodMatches / comparables.length) * 100;
+
+    let refScore = 0;
+    if (Number.isFinite(referenceDeviationPct) && referenceDeviationPct !== null) {
+      const absDev = Math.abs(referenceDeviationPct);
+      if (absDev < 10) refScore = 100;
+      else if (absDev < 20) refScore = 50;
+      else refScore = 20;
+    }
+
+    let rawScore =
+      sizeScore * CONFIDENCE_WEIGHTS.SAMPLE_SIZE +
+      dispersionScore * CONFIDENCE_WEIGHTS.DISPERSION +
+      coverageScore * CONFIDENCE_WEIGHTS.COVERAGE +
+      refScore * CONFIDENCE_WEIGHTS.REFERENCE;
+
+    if (method === 'direct') {
+      rawScore = Math.min(rawScore, 74);
+    }
+
+    return {
+      score: Math.round(rawScore),
+      effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+      coefficientOfVariation: cv,
+      dispersionLabel,
+    };
+  }
+
   function sortZoneOpportunities(opportunities, metricKey) {
     const selectedMetric = ROI_SORT_OPTIONS[metricKey] ? metricKey : "cashOnCashRoi";
 
@@ -740,6 +801,7 @@
     weightedPercentile,
     detectOutliers,
     computeStateAdjustment,
+    computeConfidenceScore,
     buildComparableRules,
     buildGuardrails,
     getComparableRejectionReason,

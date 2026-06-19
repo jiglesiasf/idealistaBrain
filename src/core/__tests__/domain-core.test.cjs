@@ -110,3 +110,56 @@ describe('computeStateAdjustment', () => {
     expect(factor).toBe(1.0);
   });
 });
+
+describe('computeConfidenceScore', () => {
+  const makeComparable = (score) => ({ score });
+
+  it('returns high score with abundant high-quality data', () => {
+    const comparables = Array.from({ length: 15 }, () => makeComparable(70));
+    const result = core.computeConfidenceScore(comparables, 0.12, -5, 'perM2');
+    expect(result.score).toBeGreaterThanOrEqual(75);
+  });
+
+  it('returns low score with few low-quality comparables', () => {
+    const comparables = [makeComparable(20), makeComparable(25)];
+    const result = core.computeConfidenceScore(comparables, 0.35, null, 'perM2');
+    expect(result.score).toBeLessThan(40);
+  });
+
+  it('returns medium score with moderate data', () => {
+    const comparables = Array.from({ length: 5 }, () => makeComparable(70));
+    const result = core.computeConfidenceScore(comparables, 0.2, null, 'perM2');
+    expect(result.score).toBeGreaterThanOrEqual(40);
+    expect(result.score).toBeLessThan(75);
+  });
+
+  it('categorizes dispersion correctly', () => {
+    const comparables = [makeComparable(50)];
+    const low = core.computeConfidenceScore(comparables, 0.10, null, 'perM2');
+    expect(low.dispersionLabel).toBe('baja');
+
+    const mod = core.computeConfidenceScore(comparables, 0.20, null, 'perM2');
+    expect(mod.dispersionLabel).toBe('moderada');
+
+    const high = core.computeConfidenceScore(comparables, 0.35, null, 'perM2');
+    expect(high.dispersionLabel).toBe('alta');
+  });
+
+  it('boosts score with close reference price match', () => {
+    const comparables = Array.from({ length: 3 }, () => makeComparable(50));
+    const withoutRef = core.computeConfidenceScore(comparables, 0.15, null, 'perM2');
+    const withRef = core.computeConfidenceScore(comparables, 0.15, 5, 'perM2');
+    expect(withRef.score).toBeGreaterThan(withoutRef.score);
+  });
+
+  it('caps fallback method at medium', () => {
+    const comparables = Array.from({ length: 20 }, () => makeComparable(75));
+    const result = core.computeConfidenceScore(comparables, 0.1, -3, 'direct');
+    expect(result.score).toBeLessThan(75);
+  });
+
+  it('returns 0 score for empty comparables', () => {
+    const result = core.computeConfidenceScore([], 0, null, 'perM2');
+    expect(result.score).toBe(0);
+  });
+});
