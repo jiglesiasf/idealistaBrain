@@ -523,11 +523,7 @@
         referenceDeviationPct: null,
       };
 
-      if (
-        referenceMonthlyRentEur &&
-        Number.isFinite(common.monthlyRentEur) &&
-        referenceMonthlyRentEur > 0
-      ) {
+      if (referenceMonthlyRentEur && Number.isFinite(common.monthlyRentEur) && referenceMonthlyRentEur > 0) {
         result.referenceDeviationPct = roundMoney(
           ((common.monthlyRentEur - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
         );
@@ -538,12 +534,22 @@
 
     if (pricedComparables.length === 0) {
       return addReference({
-        confidence: "low",
+        confidence: 'low',
         comparablesUsed: 0,
         monthlyRentEur: null,
         lowEur: null,
         highEur: null,
-        method: "Sin comparables validos con precio.",
+        method: 'Sin comparables validos con precio.',
+        confidenceSignals: {
+          score: 0,
+          effectiveSampleSize: 0,
+          coefficientOfVariation: 0,
+          dispersionLabel: 'alta',
+          stateAdjusted: false,
+          adjustmentFactor: null,
+          comparablesAfterOutlierRemoval: 0,
+          outliersRemoved: 0,
+        },
       });
     }
 
@@ -551,30 +557,100 @@
     const subjectArea = subject.targetAsset?.areaM2;
 
     if (perM2Comparables.length >= 3 && Number.isFinite(subjectArea)) {
-      const rentsPerM2 = perM2Comparables.map((item) => item.rentPerM2).sort((left, right) => left - right);
-      const basePerM2 = percentile(rentsPerM2, 0.5);
-      const lowPerM2 = percentile(rentsPerM2, 0.25);
-      const highPerM2 = percentile(rentsPerM2, 0.75);
+      const paired = perM2Comparables
+        .map((item, i) => ({ value: item.rentPerM2, score: item.score || 0 }))
+        .sort((a, b) => a.value - b.value);
+      const sortedValues = paired.map(p => p.value);
+      const sortedScores = paired.map(p => p.score);
 
-      return addReference({
-        confidence: pricedComparables.length >= TARGET_COMPARABLES ? "high" : "medium",
-        comparablesUsed: pricedComparables.length,
-        monthlyRentEur: roundMoney(basePerM2 * subjectArea),
-        lowEur: roundMoney(lowPerM2 * subjectArea),
-        highEur: roundMoney(highPerM2 * subjectArea),
-        method: "Mediana de €/m2 de comparables validos.",
-      });
+      const outlierIndices = detectOutliers(sortedValues);
+      const outlierValues = new Set(outlierIndices);
+      const cleanedValues = sortedValues.filter((_, i) => !outlierValues.has(i));
+      const cleanedScores = sortedScores.filter((_, i) => !outlierValues.has(i));
+
+      if (cleanedValues.length >= 3) {
+        const weights = cleanedScores.map(s => Math.max(s, 1));
+        const basePerM2 = weightedPercentile(cleanedValues, weights, 0.5);
+        const lowPerM2 = weightedPercentile(cleanedValues, weights, 0.25);
+        const highPerM2 = weightedPercentile(cleanedValues, weights, 0.75);
+
+        const subjectState = subject.targetAsset?.state;
+        const comparableStates = perM2Comparables.map(c => c.state);
+        const stateFactor = computeStateAdjustment(subjectState, comparableStates);
+
+        const allPairedRents = perM2Comparables.map(c => c.rentPerM2);
+        const mean = allPairedRents.reduce((s, v) => s + v, 0) / allPairedRents.length;
+        const variance = allPairedRents.reduce((s, v) => s + (v - mean) ** 2, 0) / allPairedRents.length;
+        const cv = Math.sqrt(variance) / (mean || 1);
+
+        const baseEstimate = basePerM2 * subjectArea;
+        const adjustedEstimate = baseEstimate * stateFactor;
+        const refDeviation = referenceMonthlyRentEur
+          ? ((adjustedEstimate - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
+          : null;
+
+        const confidenceResult = computeConfidenceScore(pricedComparables, cv, refDeviation, 'perM2');
+
+        const labelMap = confidenceResult.score >= 75 ? 'high' : confidenceResult.score >= 40 ? 'medium' : 'low';
+
+        return addReference({
+          confidence: labelMap,
+          comparablesUsed: pricedComparables.length,
+          monthlyRentEur: roundMoney(adjustedEstimate),
+          lowEur: roundMoney(lowPerM2 * subjectArea * stateFactor),
+          highEur: roundMoney(highPerM2 * subjectArea * stateFactor),
+          method: 'Mediana ponderada de €/m2 de comparables validos.',
+          confidenceSignals: {
+            ...confidenceResult,
+            stateAdjusted: stateFactor !== 1.0,
+            adjustmentFactor: stateFactor !== 1.0 ? roundMoney(stateFactor * 100) / 100 : null,
+            comparablesAfterOutlierRemoval: cleanedValues.length,
+            outliersRemoved: outlierIndices.length,
+          },
+        });
+      }
     }
 
     const rents = pricedComparables.map((item) => item.priceEur).sort((left, right) => left - right);
+    const rentScores = pricedComparables.map((item) => item.score || 0);
+
+    const rentPaired = pricedComparables
+      .map((item, i) => ({ value: item.priceEur, score: item.score || 0 }))
+      .sort((a, b) => a.value - b.value);
+    const sortedRents = rentPaired.map(p => p.value);
+    const sortedRentScores = rentPaired.map(p => p.score);
+    const rentWeights = sortedRentScores.map(s => Math.max(s, 1));
+
+    const directEstimate = weightedPercentile(sortedRents, rentWeights, 0.5);
+    const directLow = weightedPercentile(sortedRents, rentWeights, 0.25);
+    const directHigh = weightedPercentile(sortedRents, rentWeights, 0.75);
+
+    const directMean = rents.reduce((s, v) => s + v, 0) / rents.length;
+    const directVariance = rents.reduce((s, v) => s + (v - directMean) ** 2, 0) / rents.length;
+    const directCv = Math.sqrt(directVariance) / (directMean || 1);
+
+    const refDeviationFallback = referenceMonthlyRentEur && directEstimate
+      ? ((directEstimate - referenceMonthlyRentEur) / referenceMonthlyRentEur) * 100
+      : null;
+
+    const confidenceResultFallback = computeConfidenceScore(pricedComparables, directCv, refDeviationFallback, 'direct');
+
+    const labelMapFallback = confidenceResultFallback.score >= 75 ? 'high' : confidenceResultFallback.score >= 40 ? 'medium' : 'low';
 
     return addReference({
-      confidence: pricedComparables.length >= TARGET_COMPARABLES ? "medium" : "low",
+      confidence: labelMapFallback,
       comparablesUsed: pricedComparables.length,
-      monthlyRentEur: roundMoney(percentile(rents, 0.5)),
-      lowEur: roundMoney(percentile(rents, 0.25)),
-      highEur: roundMoney(percentile(rents, 0.75)),
-      method: "Mediana directa de rentas mensuales.",
+      monthlyRentEur: roundMoney(directEstimate),
+      lowEur: roundMoney(directLow),
+      highEur: roundMoney(directHigh),
+      method: 'Mediana ponderada directa de rentas mensuales.',
+      confidenceSignals: {
+        ...confidenceResultFallback,
+        stateAdjusted: false,
+        adjustmentFactor: null,
+        comparablesAfterOutlierRemoval: pricedComparables.length,
+        outliersRemoved: 0,
+      },
     });
   }
 

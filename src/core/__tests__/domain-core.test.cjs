@@ -163,3 +163,107 @@ describe('computeConfidenceScore', () => {
     expect(result.score).toBe(0);
   });
 });
+
+describe('buildRentEstimate', () => {
+  const makeSubject = (overrides = {}) => ({
+    targetAsset: {
+      areaM2: 80,
+      municipality: 'valencia',
+      district: 'eixample',
+      rooms: 3,
+      propertyType: 'piso',
+      state: 'buen estado',
+      ...overrides,
+    },
+    location: { city: 'valencia', district: 'eixample' },
+  });
+
+  const makeComparable = (overrides = {}) => ({
+    priceEur: 1000,
+    areaM2: 80,
+    rentPerM2: 12.5,
+    rooms: 3,
+    propertyType: 'piso',
+    municipality: 'valencia',
+    zone: 'eixample',
+    state: 'buen estado',
+    score: 70,
+    ...overrides,
+  });
+
+  it('returns low confidence with null rent when no comparables', () => {
+    const result = core.buildRentEstimate(makeSubject(), []);
+    expect(result.confidence).toBe('low');
+    expect(result.monthlyRentEur).toBeNull();
+    expect(result.comparablesUsed).toBe(0);
+  });
+
+  it('returns estimate with perM2 method when >=3 comparables with area', () => {
+    const comparables = [
+      makeComparable({ rentPerM2: 12 }),
+      makeComparable({ rentPerM2: 13 }),
+      makeComparable({ rentPerM2: 14 }),
+    ];
+    const result = core.buildRentEstimate(makeSubject(), comparables);
+    expect(result.monthlyRentEur).toBeGreaterThan(0);
+    expect(result.method).toContain('€/m2');
+    expect(result.confidenceSignals).toBeDefined();
+    expect(result.confidenceSignals.effectiveSampleSize).toBeGreaterThan(0);
+  });
+
+  it('falls back to direct rent method when <3 perM2 comparables', () => {
+    const comparables = [
+      makeComparable({ rentPerM2: null, areaM2: null, priceEur: 900 }),
+      makeComparable({ rentPerM2: null, areaM2: null, priceEur: 1000 }),
+    ];
+    const result = core.buildRentEstimate(makeSubject(), comparables);
+    expect(result.monthlyRentEur).toBeGreaterThan(0);
+    expect(result.method).toContain('directa');
+  });
+
+  it('removes outliers and does not include them in estimate', () => {
+    const comparables = [
+      makeComparable({ rentPerM2: 10, priceEur: 800, areaM2: 80 }),
+      makeComparable({ rentPerM2: 11, priceEur: 880, areaM2: 80 }),
+      makeComparable({ rentPerM2: 12, priceEur: 960, areaM2: 80 }),
+      makeComparable({ rentPerM2: 13, priceEur: 1040, areaM2: 80 }),
+      makeComparable({ rentPerM2: 12, priceEur: 960, areaM2: 80 }),
+      makeComparable({ rentPerM2: 11, priceEur: 880, areaM2: 80 }),
+      makeComparable({ rentPerM2: 12, priceEur: 960, areaM2: 80 }),
+      makeComparable({ rentPerM2: 13, priceEur: 1040, areaM2: 80 }),
+      makeComparable({ rentPerM2: 100, priceEur: 8000, areaM2: 80 }), // outlier
+    ];
+    const result = core.buildRentEstimate(makeSubject(), comparables);
+    expect(result.confidenceSignals.outliersRemoved).toBeGreaterThanOrEqual(1);
+    expect(result.monthlyRentEur).toBeLessThan(2000);
+  });
+
+  it('applies state adjustment when subject state differs from comparable mode', () => {
+    const comparables = [
+      makeComparable({ state: 'buen estado', rentPerM2: 12, priceEur: 960, areaM2: 80 }),
+      makeComparable({ state: 'buen estado', rentPerM2: 13, priceEur: 1040, areaM2: 80 }),
+      makeComparable({ state: 'buen estado', rentPerM2: 12, priceEur: 960, areaM2: 80 }),
+    ];
+    const subject = makeSubject({ state: 'reformado' });
+    const result = core.buildRentEstimate(subject, comparables);
+    expect(result.confidenceSignals.stateAdjusted).toBe(true);
+    expect(result.confidenceSignals.adjustmentFactor).toBeCloseTo(1.08, 2);
+  });
+
+  it('assigns confidence label high with sufficient data', () => {
+    const comparables = Array.from({ length: 12 }, (_, i) =>
+      makeComparable({ rentPerM2: 11 + (i % 3), score: 70 })
+    );
+    const subject = makeSubject({ areaM2: 80 });
+    const result = core.buildRentEstimate(subject, comparables);
+    expect(result.confidence).toBe('high');
+  });
+
+  it('includes reference price when available', () => {
+    const comparables = [makeComparable({ rentPerM2: 16 }), makeComparable({ rentPerM2: 17 }), makeComparable({ rentPerM2: 15 })];
+    const subject = makeSubject({ municipality: 'valencia', district: 'eixample', areaM2: 80 });
+    const result = core.buildRentEstimate(subject, comparables);
+    expect(result.referencePricePerM2).toBe(16.7);
+    expect(result.referenceMonthlyRentEur).toBe(Math.round(16.7 * 80));
+  });
+});
