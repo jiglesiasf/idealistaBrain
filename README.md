@@ -77,7 +77,7 @@ Abre un listado de resultados en Idealista y usa la extensión → "Escanear zon
 
 ### Calculadora
 
-En la web, pestaña "Calculadora" para simulaciones rápidas sin extensión.
+En la web, pestaña "Calculadora" para simulaciones rápidas, ya sea con un listado de idealista o directamente con valores introducidos manualmente. 
 
 ## Comandos
 
