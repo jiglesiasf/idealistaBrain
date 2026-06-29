@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AnalyzeForm } from "@/components/analyze-form";
-import { InboxPollCard } from "@/components/inbox-poll-card";
 import { RecentJobs } from "@/components/recent-jobs";
 import { listUserJobs } from "@/lib/jobs/service";
 import { getCompanionExtensionId, getMissingSupabaseEnvKeys } from "@/lib/supabase/env";
@@ -164,8 +163,6 @@ export default async function HomePage() {
           </div>
         )}
       </section>
-
-      {user ? <InboxPollCard /> : null}
 
       <section className="feature-list feature-list-bottom">
         <article className="feature-item">

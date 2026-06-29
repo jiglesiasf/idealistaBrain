@@ -9,7 +9,6 @@ Herramienta **buy-to-rent** que analiza inmuebles de Idealista en vivo mediante 
 | Web app | Next.js 16 + React 19 |
 | Auth + DB | Supabase (Auth, PostgreSQL, RLS) |
 | Extensión | Chrome Manifest V3 |
-| Alertas IMAP | imapflow + mailparser |
 | Tests | Vitest |
 
 ## Requisitos
@@ -32,14 +31,6 @@ Este proyecto usa una instancia compartida de Supabase. Necesitas que alguien de
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anónima (pública) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clave de backend para escritura |
 | `NEXT_PUBLIC_COMPANION_EXTENSION_ID` | ID de la extensión Chrome |
-| `IMAP_HOST` | Servidor IMAP para alerts |
-| `IMAP_PORT` | Puerto IMAP |
-| `IMAP_SECURE` | `true` o `false` |
-| `IMAP_USER` | Usuario IMAP |
-| `IMAP_PASSWORD` | Contraseña IMAP |
-| `IMAP_MAILBOX` | Buzón (normalmente `INBOX`) |
-| `IDEALISTA_ALERTS_FROM_FILTER` | Filtro remitente (ej. `idealista`) |
-| `IMAP_POLL_MAX_MESSAGES` | Máx. mensajes por poll (ej. `20`) |
 
 Coloca el `.env.local` en la raíz del proyecto.
 
@@ -100,12 +91,6 @@ Falta `SUPABASE_SERVICE_ROLE_KEY`. Sin ella, la extensión no puede escribir el 
 
 **La extensión no recibe los jobs lanzados desde la web**
 `NEXT_PUBLIC_COMPANION_EXTENSION_ID` está vacío o no coincide con el ID real de la extensión. Saca el ID de `chrome://extensions` (modo desarrollador) y pide que lo actualicen en el `.env.local`.
-
-**Error "ProviderMessageId already exists" al hacer poll de inbox**
-El mensaje ya fue procesado. Normalmente es inofensivo, pero si se repite, comprueba que el filtro `IDEALISTA_ALERTS_FROM_FILTER` esté bien configurado.
-
-**El poll de IMAP no trae mensajes**
-Verifica credenciales IMAP, que el servidor admita conexiones seguras (`IMAP_SECURE`) y que haya emails de Idealista en el buzón configurado (`IMAP_MAILBOX`).
 
 **La extensión no se conecta a la web en local**
 Asegúrate de que la web corre en `http://localhost:3000`. La extensión solo acepta mensajes desde `localhost`, `127.0.0.1` y el dominio de producción. Si cambias de puerto, actualiza `manifest.json`.
