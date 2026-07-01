@@ -1,8 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { calculate } from "@/lib/calculator/engine";
+import type { CalculatorInput } from "@/lib/calculator/engine";
 import type { OpportunitySummary } from "@/lib/opportunities/contracts";
+
+const ROI_DEFAULTS: CalculatorInput = {
+  price: 150000,
+  monthlyRent: 800,
+  itpRate: 0.10,
+  notaryRegistry: 2000,
+  mortgageFees: 350,
+  renovationCost: 0,
+  purchaseCommission: 0,
+  furnitureOther: 1000,
+  loanToValue: 0.8,
+  interestRate: 0.028,
+  mortgageTermYears: 25,
+  ibiBasuras: 300,
+  insurance: 300,
+  community: 360,
+  maintenance: 250,
+  vacancyMonths: 1,
+};
 
 type Prefill = {
   listingUrl?: string;
@@ -58,8 +79,38 @@ export function AddOpportunityModal({ onClose, onCreated, prefill, opportunity, 
   const [bedrooms, setBedrooms] = useState(init("bedrooms"));
   const [bathrooms, setBathrooms] = useState(init("bathrooms"));
   const [notes, setNotes] = useState(opportunity?.notes ?? "");
+
+  const [grossRoi, setGrossRoi] = useState<number | null>(
+    opportunity?.grossRoi ?? prefill?.grossRoi ?? null
+  );
+  const [netRoi, setNetRoi] = useState<number | null>(
+    opportunity?.netRoi ?? prefill?.netRoi ?? null
+  );
+  const [cashOnCashRoi, setCashOnCashRoi] = useState<number | null>(
+    opportunity?.cashOnCashRoi ?? prefill?.cashOnCashRoi ?? null
+  );
+  const [cashOnCashNetRoi, setCashOnCashNetRoi] = useState<number | null>(
+    opportunity?.cashOnCashNetRoi ?? prefill?.cashOnCashNetRoi ?? null
+  );
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const recomputed = useMemo(() => {
+    const p = Number(priceEur);
+    const r = Number(estimatedRentEur);
+    if (!p || !r) return null;
+    const out = calculate({ ...ROI_DEFAULTS, price: p, monthlyRent: r });
+    return out.roi;
+  }, [priceEur, estimatedRentEur]);
+
+  function handleRecalculate() {
+    if (!recomputed) return;
+    setGrossRoi(recomputed.grossYield);
+    setNetRoi(recomputed.netYield);
+    setCashOnCashRoi(recomputed.cashOnCashRoi);
+    setCashOnCashNetRoi(recomputed.cashOnCashNetRoi);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -84,20 +135,12 @@ export function AddOpportunityModal({ onClose, onCreated, prefill, opportunity, 
         notes: notes.trim() || null,
       };
 
-      if (isEdit) {
-        const p =
-          opportunity.cashOnCashRoi ?? prefill?.cashOnCashRoi;
-        if (p !== undefined) body.cashOnCashRoi = p;
-        const p2 =
-          opportunity.cashOnCashNetRoi ?? prefill?.cashOnCashNetRoi;
-        if (p2 !== undefined) body.cashOnCashNetRoi = p2;
-        const p3 =
-          opportunity.grossRoi ?? prefill?.grossRoi;
-        if (p3 !== undefined) body.grossRoi = p3;
-        const p4 =
-          opportunity.netRoi ?? prefill?.netRoi;
-        if (p4 !== undefined) body.netRoi = p4;
+      body.cashOnCashRoi = cashOnCashRoi;
+      body.cashOnCashNetRoi = cashOnCashNetRoi;
+      body.grossRoi = grossRoi;
+      body.netRoi = netRoi;
 
+      if (isEdit) {
         const res = await fetch(`/api/opportunities/${opportunity.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -113,10 +156,6 @@ export function AddOpportunityModal({ onClose, onCreated, prefill, opportunity, 
         onUpdated?.(updated);
       } else {
         body.source = prefill ? "analysis" : "manual";
-        if (prefill?.cashOnCashRoi !== undefined) body.cashOnCashRoi = prefill.cashOnCashRoi;
-        if (prefill?.cashOnCashNetRoi !== undefined) body.cashOnCashNetRoi = prefill.cashOnCashNetRoi;
-        if (prefill?.grossRoi !== undefined) body.grossRoi = prefill.grossRoi;
-        if (prefill?.netRoi !== undefined) body.netRoi = prefill.netRoi;
 
         const res = await fetch("/api/opportunities", {
           method: "POST",
@@ -237,6 +276,38 @@ export function AddOpportunityModal({ onClose, onCreated, prefill, opportunity, 
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
+
+          {isEdit ? (
+            <div>
+              <div className="opportunity-roi-grid" style={{ marginBottom: "8px" }}>
+                <div className={`opportunity-roi-card ${grossRoi != null ? "tone-neutral" : ""}`}>
+                  <span>Bruto</span>
+                  <strong>{grossRoi != null ? `${(grossRoi * 100).toFixed(1)}%` : "—"}</strong>
+                </div>
+                <div className={`opportunity-roi-card ${netRoi != null ? "tone-neutral" : ""}`}>
+                  <span>Neto</span>
+                  <strong>{netRoi != null ? `${(netRoi * 100).toFixed(1)}%` : "—"}</strong>
+                </div>
+                <div className={`opportunity-roi-card ${cashOnCashRoi != null ? "tone-neutral" : ""}`}>
+                  <span>CoC</span>
+                  <strong>{cashOnCashRoi != null ? `${(cashOnCashRoi * 100).toFixed(1)}%` : "—"}</strong>
+                </div>
+                <div className={`opportunity-roi-card ${cashOnCashNetRoi != null ? "tone-neutral" : ""}`}>
+                  <span>CoC Neto</span>
+                  <strong>{cashOnCashNetRoi != null ? `${(cashOnCashNetRoi * 100).toFixed(1)}%` : "—"}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleRecalculate}
+                disabled={!recomputed}
+                style={{ width: "100%" }}
+              >
+                Recalcular ROIs
+              </button>
+            </div>
+          ) : null}
 
           {error ? (
             <p className="calc-url-error">{error}</p>
