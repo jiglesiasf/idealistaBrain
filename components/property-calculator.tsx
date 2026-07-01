@@ -198,6 +198,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     rent: number | null;
     community: string | null;
     province: string | null;
+    municipality: string | null;
     area: number | null;
     rooms: number | null;
     propertyType: string | null;
@@ -212,6 +213,22 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     confidenceSignals: ConfidenceSignals | null;
     importedUrl: string;
     comparables: ComparableData[];
+  } | null>(null);
+  const [aeatRef, setAeatRef] = useState<{
+    found: boolean;
+    level: "municipio" | "provincia" | null;
+    alquilerMedioMensual: number | null;
+    alquilerM2Mensual: number | null;
+    rentabilidadBrutaPct: number | null;
+    municipioNombre: string;
+    anio: number;
+  } | null>(null);
+  const [saleRef, setSaleRef] = useState<{
+    found: boolean;
+    provinciaNombre: string;
+    precioM2: number | null;
+    numTransacciones: number | null;
+    anio: number;
   } | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showComparables, setShowComparables] = useState(false);
@@ -350,12 +367,13 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
 
           const imported: {
             price: number | null; rent: number | null; community: string | null; province: string | null;
+            municipality: string | null;
             area: number | null; rooms: number | null; propertyType: string | null; state: string | null;
             referenceRent: number | null; referencePricePerM2: number | null;
             confidence: string | null; lowEur: number | null; highEur: number | null;
             method: string | null; comparablesUsed: number | null;
             confidenceSignals: ConfidenceSignals | null;
-          } = { price: null, rent: null, community: null, province: null, area: null, rooms: null, propertyType: null, state: null, referenceRent: null, referencePricePerM2: null, confidence: null, lowEur: null, highEur: null, method: null, comparablesUsed: null, confidenceSignals: null };
+          } = { price: null, rent: null, community: null, province: null, municipality: null, area: null, rooms: null, propertyType: null, state: null, referenceRent: null, referencePricePerM2: null, confidence: null, lowEur: null, highEur: null, method: null, comparablesUsed: null, confidenceSignals: null };
 
           if (targetAsset?.priceEur && typeof targetAsset.priceEur === "number") {
             imported.price = targetAsset.priceEur;
@@ -379,6 +397,10 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             if (targetAsset.state === "reformar" || targetAsset.state === "a reformar") {
               setHasRenovation(true);
             }
+          }
+
+          if (targetAsset?.municipality && typeof targetAsset.municipality === "string") {
+            imported.municipality = targetAsset.municipality;
           }
 
           let detectedProvince = loc?.province && typeof loc.province === "string" ? loc.province : null;
@@ -455,6 +477,44 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           setImportResult({ ...imported, importedUrl: url, comparables });
           setImportStatus("idle");
           setIdealistaUrl("");
+
+          if (imported.municipality && detectedProvince) {
+            setAeatRef(null);
+            fetch(`/api/rent-reference?municipality=${encodeURIComponent(imported.municipality)}&province=${encodeURIComponent(detectedProvince)}`)
+              .then((r) => r.json())
+              .then((json) => {
+                if (json.found && json.data) {
+                  setAeatRef({
+                    found: true,
+                    level: json.level,
+                    alquilerMedioMensual: json.data.alquiler_medio_mensual,
+                    alquilerM2Mensual: json.data.alquiler_m2_mensual,
+                    rentabilidadBrutaPct: json.data.rentabilidad_bruta_pct,
+                    municipioNombre: json.data.municipio_nombre,
+                    anio: json.data.anio,
+                  });
+                }
+              })
+              .catch(() => { /* silencioso: AEAT es dato adicional, no bloqueante */ });
+          }
+
+          if (detectedProvince) {
+            setSaleRef(null);
+            fetch(`/api/sale-reference?province=${encodeURIComponent(detectedProvince)}`)
+              .then((r) => r.json())
+              .then((json) => {
+                if (json.found && json.data) {
+                  setSaleRef({
+                    found: true,
+                    provinciaNombre: json.data.provincia_nombre,
+                    precioM2: json.data.precio_m2_vivienda,
+                    numTransacciones: json.data.num_transacciones,
+                    anio: json.data.anio,
+                  });
+                }
+              })
+              .catch(() => { /* silencioso: Registradores es dato adicional, no bloqueante */ });
+          }
         } else if (jobView.status === "failed") {
           clearInterval(pollInterval);
           setImportError(jobView.lastProgressMessage ?? "El análisis ha fallado.");
@@ -541,7 +601,67 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                   {importResult.propertyType ? <><span>Tipo</span><strong>{importResult.propertyType}</strong></> : null}
                   {importResult.state ? <><span>Estado</span><strong>{importResult.state}</strong></> : null}
                 </div>
-                {importResult.confidenceSignals ? (
+                {aeatRef?.found ? (
+                  <div className="calc-aeat-strip">
+                    <span className="calc-aeat-badge">AEAT {aeatRef.anio}</span>
+                    <span className="calc-aeat-label">
+                      {aeatRef.level === "provincia" ? `Provincia (sin dato municipal)` : aeatRef.municipioNombre}
+                    </span>
+                    {aeatRef.alquilerMedioMensual != null ? (
+                      <span className="calc-aeat-stat">
+                        Alquiler medio <strong>{currency(aeatRef.alquilerMedioMensual)}/mes</strong>
+                      </span>
+                    ) : null}
+                    {aeatRef.alquilerM2Mensual != null ? (
+                      <span className="calc-aeat-stat">
+                        <strong>{aeatRef.alquilerM2Mensual} €/m²</strong>
+                      </span>
+                    ) : null}
+                    {aeatRef.rentabilidadBrutaPct != null ? (
+                      <span className="calc-aeat-stat">
+                        Rentabilidad bruta declarada <strong>{aeatRef.rentabilidadBrutaPct}%</strong>
+                      </span>
+                    ) : null}
+                    {aeatRef.rentabilidadBrutaPct != null ? (
+                      <span className="calc-aeat-note">
+                        ⚠ Sobre valor catastral, no precio de mercado
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {saleRef?.found && saleRef.precioM2 != null ? (() => {
+                  const offerPm2 = importResult.area && importResult.area > 0 && importResult.price
+                    ? Math.round(importResult.price / importResult.area)
+                    : null;
+                  const biasPct = offerPm2 && saleRef.precioM2
+                    ? Math.round((offerPm2 / saleRef.precioM2 - 1) * 100)
+                    : null;
+                  return (
+                    <div className="calc-sale-strip">
+                      <span className="calc-sale-badge">Registradores {saleRef.anio}</span>
+                      <span className="calc-sale-label">{saleRef.provinciaNombre}</span>
+                      <span className="calc-sale-stat">
+                        Transacciones reales <strong>{fmt(Math.round(saleRef.precioM2))} €/m²</strong>
+                      </span>
+                      {offerPm2 != null ? (
+                        <span className="calc-sale-stat">
+                          Oferta Idealista <strong>{fmt(offerPm2)} €/m²</strong>
+                        </span>
+                      ) : null}
+                      {biasPct != null ? (
+                        <span className={`calc-sale-bias ${biasPct > 15 ? "bias-high" : biasPct > 5 ? "bias-med" : "bias-low"}`}>
+                          {biasPct > 0 ? `+${biasPct}%` : `${biasPct}%`} sobre precio real
+                        </span>
+                      ) : null}
+                      {saleRef.numTransacciones != null ? (
+                        <span className="calc-sale-note">
+                          Basado en {fmt(saleRef.numTransacciones)} transacciones en 2024
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })() : null}
+            {importResult.confidenceSignals ? (
                   <div className="calc-confidence-strip">
                     <span className={`calc-conf-badge calc-conf-${importResult.confidence ?? "low"}`}>
                       {(importResult.confidence ?? "").toUpperCase() || "—"}
