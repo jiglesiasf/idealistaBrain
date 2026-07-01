@@ -1555,9 +1555,10 @@ button {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 1.5rem;
-  max-width: 560px;
+  max-width: 720px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
   box-shadow: var(--shadow-strong);
 }
@@ -2747,17 +2748,4 @@ button {
   }
 }
 
-.opp-form {
-  display: grid;
-  gap: 10px;
-}
 
-.opp-form .field {
-  margin-bottom: 0;
-}
-
-.opp-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}

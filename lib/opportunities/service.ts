@@ -135,9 +135,20 @@ export async function updateOpportunity(
 
   const updatePayload: Record<string, unknown> = {};
 
-  if (input.status) updatePayload.status = input.status;
-  if (input.notes !== undefined) updatePayload.notes = input.notes;
+  if (input.listingUrl !== undefined) updatePayload.listing_url = input.listingUrl;
   if (input.title !== undefined) updatePayload.title = input.title;
+  if (input.priceEur !== undefined) updatePayload.price_eur = input.priceEur;
+  if (input.estimatedRentEur !== undefined) updatePayload.estimated_rent_eur = input.estimatedRentEur;
+  if (input.totalCashNeededEur !== undefined) updatePayload.total_cash_needed_eur = input.totalCashNeededEur;
+  if (input.sqmeters !== undefined) updatePayload.sqmeters = input.sqmeters;
+  if (input.bedrooms !== undefined) updatePayload.bedrooms = input.bedrooms;
+  if (input.bathrooms !== undefined) updatePayload.bathrooms = input.bathrooms;
+  if (input.cashOnCashRoi !== undefined) updatePayload.cash_on_cash_roi = input.cashOnCashRoi;
+  if (input.cashOnCashNetRoi !== undefined) updatePayload.cash_on_cash_net_roi = input.cashOnCashNetRoi;
+  if (input.grossRoi !== undefined) updatePayload.gross_roi = input.grossRoi;
+  if (input.netRoi !== undefined) updatePayload.net_roi = input.netRoi;
+  if (input.notes !== undefined) updatePayload.notes = input.notes;
+  if (input.status !== undefined) updatePayload.status = input.status;
 
   const { data, error } = await client
     .from("opportunities")

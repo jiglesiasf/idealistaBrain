@@ -1,41 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { OpportunitySummary } from "@/lib/opportunities/contracts";
+
+type Prefill = {
+  listingUrl?: string;
+  title?: string | null;
+  priceEur?: number | null;
+  estimatedRentEur?: number | null;
+  totalCashNeededEur?: number | null;
+  sqmeters?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  cashOnCashRoi?: number | null;
+  cashOnCashNetRoi?: number | null;
+  grossRoi?: number | null;
+  netRoi?: number | null;
+};
 
 type Props = {
   onClose: () => void;
   onCreated: (opp: OpportunitySummary) => void;
-  prefill?: {
-    listingUrl?: string;
-    title?: string | null;
-    priceEur?: number | null;
-    estimatedRentEur?: number | null;
-    totalCashNeededEur?: number | null;
-    sqmeters?: number | null;
-    bedrooms?: number | null;
-    bathrooms?: number | null;
-    cashOnCashRoi?: number | null;
-    cashOnCashNetRoi?: number | null;
-    grossRoi?: number | null;
-    netRoi?: number | null;
-  };
+  prefill?: Prefill;
+  opportunity?: OpportunitySummary;
+  onUpdated?: (opp: OpportunitySummary) => void;
 };
 
-export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
-  const [listingUrl, setListingUrl] = useState(prefill?.listingUrl ?? "");
-  const [title, setTitle] = useState(prefill?.title ?? "");
-  const [priceEur, setPriceEur] = useState(prefill?.priceEur?.toString() ?? "");
-  const [estimatedRentEur, setEstimatedRentEur] = useState(
-    prefill?.estimatedRentEur?.toString() ?? ""
-  );
-  const [totalCashNeededEur, setTotalCashNeededEur] = useState(
-    prefill?.totalCashNeededEur?.toString() ?? ""
-  );
-  const [sqmeters, setSqmeters] = useState(prefill?.sqmeters?.toString() ?? "");
-  const [bedrooms, setBedrooms] = useState(prefill?.bedrooms?.toString() ?? "");
-  const [bathrooms, setBathrooms] = useState(prefill?.bathrooms?.toString() ?? "");
-  const [notes, setNotes] = useState("");
+export function AddOpportunityModal({ onClose, onCreated, prefill, opportunity, onUpdated }: Props) {
+  const isEdit = !!opportunity;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  function init(name: keyof Prefill, fallback = ""): string {
+    if (opportunity) {
+      const val = opportunity[name as keyof typeof opportunity];
+      return val != null ? String(val) : fallback;
+    }
+    const pv = prefill?.[name];
+    return pv != null ? String(pv) : fallback;
+  }
+
+  const [listingUrl, setListingUrl] = useState(isEdit ? opportunity.listingUrl : prefill?.listingUrl ?? "");
+  const [title, setTitle] = useState(init("title"));
+  const [priceEur, setPriceEur] = useState(init("priceEur"));
+  const [estimatedRentEur, setEstimatedRentEur] = useState(init("estimatedRentEur"));
+  const [totalCashNeededEur, setTotalCashNeededEur] = useState(init("totalCashNeededEur"));
+  const [sqmeters, setSqmeters] = useState(init("sqmeters"));
+  const [bedrooms, setBedrooms] = useState(init("bedrooms"));
+  const [bathrooms, setBathrooms] = useState(init("bathrooms"));
+  const [notes, setNotes] = useState(opportunity?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -60,27 +82,56 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
         bedrooms: bedrooms ? Number(bedrooms) : null,
         bathrooms: bathrooms ? Number(bathrooms) : null,
         notes: notes.trim() || null,
-        source: prefill ? "analysis" : "manual",
       };
 
-      if (prefill?.cashOnCashRoi !== undefined) body.cashOnCashRoi = prefill.cashOnCashRoi;
-      if (prefill?.cashOnCashNetRoi !== undefined) body.cashOnCashNetRoi = prefill.cashOnCashNetRoi;
-      if (prefill?.grossRoi !== undefined) body.grossRoi = prefill.grossRoi;
-      if (prefill?.netRoi !== undefined) body.netRoi = prefill.netRoi;
+      if (isEdit) {
+        const p =
+          opportunity.cashOnCashRoi ?? prefill?.cashOnCashRoi;
+        if (p !== undefined) body.cashOnCashRoi = p;
+        const p2 =
+          opportunity.cashOnCashNetRoi ?? prefill?.cashOnCashNetRoi;
+        if (p2 !== undefined) body.cashOnCashNetRoi = p2;
+        const p3 =
+          opportunity.grossRoi ?? prefill?.grossRoi;
+        if (p3 !== undefined) body.grossRoi = p3;
+        const p4 =
+          opportunity.netRoi ?? prefill?.netRoi;
+        if (p4 !== undefined) body.netRoi = p4;
 
-      const res = await fetch("/api/opportunities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+        const res = await fetch(`/api/opportunities/${opportunity.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Error al guardar.");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Error al guardar.");
+        }
+
+        const { opportunity: updated } = await res.json();
+        onUpdated?.(updated);
+      } else {
+        body.source = prefill ? "analysis" : "manual";
+        if (prefill?.cashOnCashRoi !== undefined) body.cashOnCashRoi = prefill.cashOnCashRoi;
+        if (prefill?.cashOnCashNetRoi !== undefined) body.cashOnCashNetRoi = prefill.cashOnCashNetRoi;
+        if (prefill?.grossRoi !== undefined) body.grossRoi = prefill.grossRoi;
+        if (prefill?.netRoi !== undefined) body.netRoi = prefill.netRoi;
+
+        const res = await fetch("/api/opportunities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Error al guardar.");
+        }
+
+        const { opportunity: created } = await res.json();
+        onCreated(created);
       }
-
-      const { opportunity } = await res.json();
-      onCreated(opportunity);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -88,17 +139,17 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
     }
   }
 
-  return (
+  const content = (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Añadir oportunidad</h3>
+          <h3>{isEdit ? "Editar oportunidad" : "Añadir oportunidad"}</h3>
           <button type="button" className="modal-close" onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="opp-form">
+        <form onSubmit={handleSubmit} className="stack">
           <div className="field">
             <label>URL de Idealista *</label>
             <input
@@ -120,7 +171,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
             />
           </div>
 
-          <div className="opp-form-grid">
+          <div className="calc-field-grid">
             <div className="field">
               <label>Precio (€)</label>
               <input
@@ -191,16 +242,19 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
             <p className="calc-url-error">{error}</p>
           ) : null}
 
-          <div className="action-row" style={{ marginTop: "4px" }}>
+          <div className="action-row">
             <button type="button" className="ghost-button" onClick={onClose}>
               Cancelar
             </button>
             <button type="submit" className="primary-button" disabled={saving}>
-              {saving ? "Guardando..." : "Guardar"}
+              {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar"}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(content, document.body);
 }

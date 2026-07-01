@@ -38,6 +38,7 @@ export function OpportunityList({
 }) {
   const [opportunities, setOpportunities] = useState(initialOpportunities);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingOpp, setEditingOpp] = useState<OpportunitySummary | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -65,6 +66,11 @@ export function OpportunityList({
       setDeleting(false);
       setDeleteId(null);
     }
+  }, []);
+
+  const handleUpdate = useCallback((updated: OpportunitySummary) => {
+    setOpportunities((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    setEditingOpp(null);
   }, []);
 
   const handleArchive = useCallback(async (id: string) => {
@@ -181,6 +187,12 @@ export function OpportunityList({
               <div className="action-row" style={{ marginTop: "12px" }}>
                 <button
                   className="ghost-button compact-button"
+                  onClick={() => setEditingOpp(opp)}
+                >
+                  Editar
+                </button>
+                <button
+                  className="ghost-button compact-button"
                   onClick={() => handleArchive(opp.id)}
                 >
                   Archivar
@@ -202,6 +214,15 @@ export function OpportunityList({
         <AddOpportunityModal
           onClose={() => setShowAddModal(false)}
           onCreated={handleAdd}
+        />
+      ) : null}
+
+      {editingOpp ? (
+        <AddOpportunityModal
+          opportunity={editingOpp}
+          onClose={() => setEditingOpp(null)}
+          onCreated={handleAdd}
+          onUpdated={handleUpdate}
         />
       ) : null}
     </div>

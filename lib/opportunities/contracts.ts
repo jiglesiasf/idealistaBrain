@@ -25,9 +25,20 @@ export const CreateOpportunityInputSchema = z.object({
 });
 
 export const UpdateOpportunityInputSchema = z.object({
-  status: z.enum(OPPORTUNITY_STATUSES).optional(),
-  notes: z.string().max(2000).optional().nullable(),
+  listingUrl: z.string().url().max(2048).optional(),
   title: z.string().trim().max(200).optional().nullable(),
+  priceEur: z.number().int().min(0).optional().nullable(),
+  estimatedRentEur: z.number().int().min(0).optional().nullable(),
+  totalCashNeededEur: z.number().int().min(0).optional().nullable(),
+  sqmeters: z.number().min(0).optional().nullable(),
+  bedrooms: z.number().int().min(0).optional().nullable(),
+  bathrooms: z.number().int().min(0).optional().nullable(),
+  cashOnCashRoi: z.number().min(-1).max(10).optional().nullable(),
+  cashOnCashNetRoi: z.number().min(-1).max(10).optional().nullable(),
+  grossRoi: z.number().min(-1).max(10).optional().nullable(),
+  netRoi: z.number().min(-1).max(10).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  status: z.enum(OPPORTUNITY_STATUSES).optional(),
 });
 
 export type CreateOpportunityInput = z.infer<typeof CreateOpportunityInputSchema>;
