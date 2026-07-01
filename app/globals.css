@@ -2733,3 +2733,15 @@ button {
 .calc-comps-table th:nth-child(2) {
   position: relative;
 }
+
+.opportunities-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 700px) {
+  .opportunities-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

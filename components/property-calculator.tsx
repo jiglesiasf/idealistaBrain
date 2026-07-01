@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback } from "react";
 import { calculate, calculateTargetPrice, calculateTargetRent } from "@/lib/calculator/engine";
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
 import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/engine";
+import { AddOpportunityModal } from "@/components/add-opportunity-modal";
 
 type ConfidenceSignals = {
   score: number;
@@ -215,6 +216,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
   const [shareCopied, setShareCopied] = useState(false);
   const [showComparables, setShowComparables] = useState(false);
   const [showScoreHelp, setShowScoreHelp] = useState(false);
+  const [showAddOppModal, setShowAddOppModal] = useState(false);
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrice = useMemo(() => calculateTargetPrice(input), [input]);
@@ -515,6 +517,9 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                         Ver comparables
                       </button>
                     ) : null}
+                    <button type="button" className="calc-import-link" onClick={() => setShowAddOppModal(true)}>
+                      + Seguimiento
+                    </button>
                   </div>
                 </div>
                 <div className="calc-import-grid">
@@ -957,6 +962,26 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             </div>
           </div>
         </div>
+      ) : null}
+
+      {showAddOppModal && importResult ? (
+        <AddOpportunityModal
+          onClose={() => setShowAddOppModal(false)}
+          onCreated={() => setShowAddOppModal(false)}
+          prefill={{
+            listingUrl: importResult.importedUrl,
+            title: null,
+            priceEur: importResult.price,
+            estimatedRentEur: importResult.rent,
+            totalCashNeededEur: result.cashBreakdown.totalCashNeeded,
+            sqmeters: importResult.area,
+            bedrooms: importResult.rooms,
+            cashOnCashRoi: result.roi.cashOnCashRoi,
+            cashOnCashNetRoi: result.roi.cashOnCashNetRoi,
+            grossRoi: result.roi.grossYield,
+            netRoi: result.roi.netYield,
+          }}
+        />
       ) : null}
     </div>
   );

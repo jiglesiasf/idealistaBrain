@@ -68,7 +68,11 @@ Abre un listado de resultados en Idealista y usa la extensión → "Escanear zon
 
 ### Calculadora
 
-En la web, pestaña "Calculadora" para simulaciones rápidas, ya sea con un listado de idealista o directamente con valores introducidos manualmente. 
+En la web, pestaña "Calculadora" para simulaciones rápidas, ya sea con un listado de idealista o directamente con valores introducidos manualmente.
+
+### Seguimiento de oportunidades
+
+En `Seguimiento` guardas las oportunidades que te interesan para revisarlas después. Puedes añadirlas manualmente o desde la calculadora con el botón "+ Seguimiento" que aparece junto a "Ver en Idealista" cuando importas un análisis.
 
 ## Comandos
 

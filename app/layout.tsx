@@ -62,6 +62,9 @@ export default async function RootLayout({
               <Link href="/calculator" className="nav-link">
                 Calculadora
               </Link>
+              <Link href="/seguimiento" className="nav-link">
+                Seguimiento
+              </Link>
 
               {userEmail ? (
                 <>
