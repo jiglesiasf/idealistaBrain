@@ -582,7 +582,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           <div className="calc-field-grid">
             <div className="field">
               <label>Precio de compra (€)</label>
-              <input type="number" value={input.price} onChange={(e) => patch({ price: Number(e.target.value) || 0 })} />
+              <input type="number" step="1000" value={input.price} onChange={(e) => patch({ price: Number(e.target.value) || 0 })} />
             </div>
             <div className="field">
               <label>Renta estimada (€/mes)</label>
@@ -618,19 +618,19 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             </div>
             <div className="field">
               <label>Notaría + Registro (€)</label>
-              <input type="number" value={input.notaryRegistry} onChange={(e) => patch({ notaryRegistry: Number(e.target.value) || 0 })} />
+              <input type="number" step="10" value={input.notaryRegistry} onChange={(e) => patch({ notaryRegistry: Number(e.target.value) || 0 })} />
             </div>
             <div className="field">
               <label>Gastos hipoteca (€)</label>
-              <input type="number" value={input.mortgageFees} onChange={(e) => patch({ mortgageFees: Number(e.target.value) || 0 })} />
+              <input type="number" step="10" value={input.mortgageFees} onChange={(e) => patch({ mortgageFees: Number(e.target.value) || 0 })} />
             </div>
             <div className="field">
               <label>Comisión compra (€)</label>
-              <input type="number" value={input.purchaseCommission} onChange={(e) => patch({ purchaseCommission: Number(e.target.value) || 0 })} />
+              <input type="number" step="10" value={input.purchaseCommission} onChange={(e) => patch({ purchaseCommission: Number(e.target.value) || 0 })} />
             </div>
             <div className="field">
               <label>Mobiliario y otros (€)</label>
-              <input type="number" value={input.furnitureOther} onChange={(e) => patch({ furnitureOther: Number(e.target.value) || 0 })} />
+              <input type="number" step="10" value={input.furnitureOther} onChange={(e) => patch({ furnitureOther: Number(e.target.value) || 0 })} />
             </div>
             <div className="field">
               <label>Reforma</label>
@@ -642,7 +642,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
             {hasRenovation ? (
               <div className="field">
                 <label>Coste reforma (€)</label>
-                <input type="number" value={input.renovationCost} onChange={(e) => patch({ renovationCost: Number(e.target.value) || 0 })} />
+                <input type="number" step="10" value={input.renovationCost} onChange={(e) => patch({ renovationCost: Number(e.target.value) || 0 })} />
               </div>
             ) : null}
           </div>
@@ -992,7 +992,7 @@ function CalcCostRow({ label, annual, onChange }: { label: string; annual: numbe
     <div className="calc-cost-row">
       <span className="calc-cost-label">{label}</span>
       <div className="calc-cost-annual">
-        <input type="number" value={annual} onChange={(e) => onChange(Number(e.target.value) || 0)} />
+        <input type="number" step="10" value={annual} onChange={(e) => onChange(Number(e.target.value) || 0)} />
       </div>
       <span className="calc-cost-monthly">{currency(round(annual / 12))}</span>
     </div>
