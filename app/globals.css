@@ -1547,6 +1547,7 @@ button {
   justify-content: center;
   z-index: 100;
   padding: 1rem;
+  overflow-y: auto;
 }
 
 .modal-card {
@@ -2744,4 +2745,19 @@ button {
   .opportunities-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.opp-form {
+  display: grid;
+  gap: 10px;
+}
+
+.opp-form .field {
+  margin-bottom: 0;
+}
+
+.opp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }

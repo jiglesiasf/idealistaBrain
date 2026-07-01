@@ -98,7 +98,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="stack" style={{ padding: "16px" }}>
+        <form onSubmit={handleSubmit} className="opp-form">
           <div className="field">
             <label>URL de Idealista *</label>
             <input
@@ -120,7 +120,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
             />
           </div>
 
-          <div className="calc-field-grid">
+          <div className="opp-form-grid">
             <div className="field">
               <label>Precio (€)</label>
               <input
@@ -131,7 +131,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
               />
             </div>
             <div className="field">
-              <label>Renta estimada (€/mes)</label>
+              <label>Renta (€/mes)</label>
               <input
                 type="number"
                 placeholder="800"
@@ -180,7 +180,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
           <div className="field">
             <label>Notas</label>
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Primera visita pendiente, barrio en revalorización..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -191,7 +191,7 @@ export function AddOpportunityModal({ onClose, onCreated, prefill }: Props) {
             <p className="calc-url-error">{error}</p>
           ) : null}
 
-          <div className="action-row">
+          <div className="action-row" style={{ marginTop: "4px" }}>
             <button type="button" className="ghost-button" onClick={onClose}>
               Cancelar
             </button>
