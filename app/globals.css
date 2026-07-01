@@ -2495,6 +2495,73 @@ button {
   opacity: 0.8;
 }
 
+/* ── Registradores sale reference strip ─────────────────── */
+
+.calc-sale-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(180, 100, 20, 0.06);
+  border: 1px solid rgba(180, 100, 20, 0.15);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.calc-sale-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(180, 100, 20, 0.10);
+  color: rgb(140, 75, 10);
+}
+
+.calc-sale-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.calc-sale-stat strong {
+  color: var(--ink);
+  font-weight: 640;
+}
+
+.calc-sale-bias {
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+.calc-sale-bias.bias-high {
+  background: rgba(190, 62, 62, 0.10);
+  color: rgb(160, 40, 40);
+}
+
+.calc-sale-bias.bias-med {
+  background: rgba(155, 106, 18, 0.10);
+  color: rgb(130, 85, 10);
+}
+
+.calc-sale-bias.bias-low {
+  background: rgba(20, 128, 74, 0.10);
+  color: rgb(20, 100, 55);
+}
+
+.calc-sale-note {
+  width: 100%;
+  font-size: 0.68rem;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
 /* ── Confidence/score shared colors ─────────────────────── */
 
 .score-high {
