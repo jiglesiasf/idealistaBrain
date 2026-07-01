@@ -2452,6 +2452,50 @@ button {
   font-weight: 640;
 }
 
+.calc-aeat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(62, 120, 200, 0.07);
+  border: 1px solid rgba(62, 120, 200, 0.15);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.calc-aeat-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(62, 120, 200, 0.12);
+  color: rgb(40, 90, 170);
+}
+
+.calc-aeat-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.calc-aeat-stat strong {
+  color: var(--ink);
+  font-weight: 640;
+}
+
+.calc-aeat-note {
+  width: 100%;
+  font-size: 0.68rem;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
 /* ── Confidence/score shared colors ─────────────────────── */
 
 .score-high {
