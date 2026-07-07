@@ -71,6 +71,7 @@ export function AnalyzeForm() {
 
         setStatusLine("Analisis enviado correctamente.");
         setStatusTone("success");
+        router.refresh();
         router.push(`/jobs/${payload.job.id}`);
       } catch (error) {
         setStatusLine(normalizeSubmitError(error));
