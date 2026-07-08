@@ -10,7 +10,7 @@ export const ITP_RATES: Record<string, number> = {
   Cataluña: 0.10,
   Ceuta: 0.06,
   "Comunidad de Madrid": 0.06,
-  "Comunidad Valenciana": 0.10,
+  "Comunidad Valenciana": 0.09,
   Extremadura: 0.08,
   Galicia: 0.09,
   "La Rioja": 0.07,
