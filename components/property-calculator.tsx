@@ -7,6 +7,8 @@ import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/
 import { AddOpportunityModal } from "@/components/add-opportunity-modal";
 import { NumberInput } from "@/components/number-input";
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
 type ConfidenceSignals = {
   score: number;
   effectiveSampleSize: number;
@@ -244,6 +246,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
   const [showComparables, setShowComparables] = useState(false);
   const [showScoreHelp, setShowScoreHelp] = useState(false);
   const [showAddOppModal, setShowAddOppModal] = useState(false);
+  const [savePisoStatus, setSavePisoStatus] = useState<SaveStatus>("idle");
   const [printDate, setPrintDate] = useState("");
 
   useEffect(() => {
@@ -544,6 +547,62 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     }, 2000);
   }, [idealistaUrl]);
 
+  const handleSavePiso = useCallback(async () => {
+    setSavePisoStatus("saving");
+    try {
+      const body: Record<string, unknown> = {
+        title: importResult?.propertyType
+          ? `${importResult.propertyType}${importResult.area ? ` ${fmt(importResult.area)} m²` : ""}${importResult.rooms ? `, ${importResult.rooms} hab` : ""}`
+          : null,
+        listingUrl: importResult?.importedUrl || null,
+        priceEur: input.price,
+        estimatedRentEur: input.monthlyRent,
+        sqmeters: importResult?.area ?? null,
+        bedrooms: importResult?.rooms ?? null,
+        bathrooms: null,
+        propertyType: importResult?.propertyType ?? null,
+        itpRate: input.itpRate,
+        notaryRegistryEur: input.notaryRegistry,
+        mortgageFeesEur: input.mortgageFees,
+        renovationCostEur: input.renovationCost,
+        purchaseCommissionEur: input.purchaseCommission,
+        furnitureOtherEur: input.furnitureOther,
+        loanToValue: input.loanToValue,
+        interestRate: input.interestRate,
+        mortgageTermYears: input.mortgageTermYears,
+        ibiBasurasEur: input.ibiBasuras,
+        insuranceEur: input.insurance,
+        communityEur: input.community,
+        maintenanceEur: input.maintenance,
+        vacancyMonths: input.vacancyMonths,
+        grossYield: result.roi.grossYield,
+        netYield: result.roi.netYield,
+        cashOnCashRoi: result.roi.cashOnCashRoi,
+        cashOnCashNetRoi: result.roi.cashOnCashNetRoi,
+        totalCashNeededEur: result.cashBreakdown.totalCashNeeded,
+        monthlyMortgageEur: result.mortgage.monthlyPayment,
+        monthlyNetCashFlowEur: result.income.monthlyNetCashFlow,
+      };
+
+      const res = await fetch("/api/pisos-interesantes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Error al guardar.");
+      }
+
+      setSavePisoStatus("saved");
+      setTimeout(() => setSavePisoStatus("idle"), 3000);
+    } catch {
+      setSavePisoStatus("error");
+      setTimeout(() => setSavePisoStatus("idle"), 3000);
+    }
+  }, [input, result, importResult]);
+
   return (
     <div className="calculator-layout">
       <div className="calc-inputs">
@@ -595,6 +654,14 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
                     ) : null}
                     <button type="button" className="calc-import-link" onClick={() => setShowAddOppModal(true)}>
                       + Seguimiento
+                    </button>
+                    <button
+                      type="button"
+                      className={`calc-import-link ${savePisoStatus === "saved" ? "save-ok" : savePisoStatus === "error" ? "save-err" : ""}`}
+                      onClick={handleSavePiso}
+                      disabled={savePisoStatus === "saving"}
+                    >
+                      {savePisoStatus === "saving" ? "Guardando…" : savePisoStatus === "saved" ? "✓ Guardado" : savePisoStatus === "error" ? "Error" : "⭐ Piso interesante"}
                     </button>
                   </div>
                 </div>
@@ -870,6 +937,14 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
         </div>
 
         <div className="calc-share-row">
+          <button
+            type="button"
+            className={`calc-share-btn ${savePisoStatus === "saved" ? "save-ok" : savePisoStatus === "error" ? "save-err" : ""}`}
+            onClick={handleSavePiso}
+            disabled={savePisoStatus === "saving"}
+          >
+            {savePisoStatus === "saving" ? "Guardando…" : savePisoStatus === "saved" ? "✓ Guardado en Pisos Interesantes" : savePisoStatus === "error" ? "Error al guardar" : "⭐ Guardar en Pisos Interesantes"}
+          </button>
           <button
             type="button"
             className="calc-share-btn"
