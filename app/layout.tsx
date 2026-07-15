@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { NavLink } from "@/components/nav-link";
 import { getMissingSupabaseEnvKeys } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/app/auth/actions";
@@ -50,21 +51,21 @@ export default async function RootLayout({
             </Link>
 
             <nav className="nav-row">
-              <Link href="/" className="nav-link">
+              <NavLink href="/" exact>
                 Analizar
-              </Link>
-              <Link href="/dashboard" className="nav-link">
+              </NavLink>
+              <NavLink href="/dashboard">
                 Historial
-              </Link>
-              <Link href="/runner" className="nav-link">
+              </NavLink>
+              <NavLink href="/runner">
                 Runner
-              </Link>
-              <Link href="/calculator" className="nav-link">
+              </NavLink>
+              <NavLink href="/calculator">
                 Calculadora
-              </Link>
-              <Link href="/seguimiento" className="nav-link">
+              </NavLink>
+              <NavLink href="/seguimiento">
                 Seguimiento
-              </Link>
+              </NavLink>
 
               {userEmail ? (
                 <>

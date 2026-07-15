@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { calculate, calculateTargetPrice, calculateTargetRent } from "@/lib/calculator/engine";
 import { ITP_OPTIONS, getItpRate } from "@/lib/calculator/itp";
 import type { CalculatorInput, TargetPrice, TargetRent } from "@/lib/calculator/engine";
@@ -240,6 +240,11 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
   const [showComparables, setShowComparables] = useState(false);
   const [showScoreHelp, setShowScoreHelp] = useState(false);
   const [showAddOppModal, setShowAddOppModal] = useState(false);
+  const [printDate, setPrintDate] = useState("");
+
+  useEffect(() => {
+    setPrintDate(new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }));
+  }, []);
 
   const result = useMemo(() => calculate(input), [input]);
   const targetPrice = useMemo(() => calculateTargetPrice(input), [input]);
@@ -883,6 +888,9 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           >
             {shareCopied ? "✓ URL copiada" : "🔗 Compartir"}
           </button>
+          <button type="button" className="calc-share-btn" onClick={() => window.print()}>
+            🖨 Imprimir informe
+          </button>
         </div>
 
         <section className="card tone-neutral">
@@ -1003,6 +1011,136 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
           </p>
         </section>
       ) : null}
+
+      <div className="calc-print-report">
+        <div className="print-header">
+          <h1>Idealista Brain — Informe de calculadora</h1>
+          <p className="print-date">{printDate}</p>
+        </div>
+
+        {importResult?.importedUrl ? (
+          <div className="print-section">
+            <h2>Inmueble analizado</h2>
+            <a href={importResult.importedUrl} className="print-url">{importResult.importedUrl}</a>
+            <div className="print-kv-grid">
+              {importResult.price ? <><span>Precio oferta</span><strong>{currency(importResult.price)}</strong></> : null}
+              {importResult.area ? <><span>Superficie</span><strong>{fmt(importResult.area)} m²</strong></> : null}
+              {importResult.rooms ? <><span>Habitaciones</span><strong>{importResult.rooms}</strong></> : null}
+              {importResult.propertyType ? <><span>Tipo</span><strong>{importResult.propertyType}</strong></> : null}
+              {importResult.state ? <><span>Estado</span><strong>{importResult.state}</strong></> : null}
+              {importResult.municipality ? <><span>Municipio</span><strong>{importResult.municipality}</strong></> : null}
+              {importResult.province ? <><span>Provincia</span><strong>{importResult.province}</strong></> : null}
+              {importResult.community ? <><span>Comunidad</span><strong>{importResult.community}</strong></> : null}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="print-section">
+          <h2>Parámetros de la operación</h2>
+          <div className="print-kv-grid">
+            <span>Precio de compra</span><strong>{currency(input.price)}</strong>
+            <span>Renta estimada</span><strong>{currency(input.monthlyRent)}/mes</strong>
+            <span>ITP</span><strong>{(input.itpRate * 100).toFixed(1)}% ({itpCommunity})</strong>
+            <span>Notaría + Registro</span><strong>{currency(input.notaryRegistry)}</strong>
+            <span>Gastos hipoteca</span><strong>{currency(input.mortgageFees)}</strong>
+            {input.renovationCost > 0 ? <><span>Reforma</span><strong>{currency(input.renovationCost)}</strong></> : null}
+            {input.purchaseCommission > 0 ? <><span>Comisión compra</span><strong>{currency(input.purchaseCommission)}</strong></> : null}
+            <span>Mobiliario y otros</span><strong>{currency(input.furnitureOther)}</strong>
+            <span>LTV (hipoteca)</span><strong>{round(input.loanToValue * 100)}%</strong>
+            <span>Tipo de interés</span><strong>{(input.interestRate * 100).toFixed(2)}%</strong>
+            <span>Plazo</span><strong>{input.mortgageTermYears} años</strong>
+          </div>
+        </div>
+
+        <div className="print-section">
+          <h2>Capital necesario</h2>
+          <div className="print-kv-grid">
+            <span>Entrada ({round(input.loanToValue * 100)}% hipoteca)</span><strong>{currency(result.cashBreakdown.downPayment)}</strong>
+            <span>Gastos de adquisición</span><strong>{currency(result.cashBreakdown.totalAcquisitionCosts)}</strong>
+            <span>TOTAL EFECTIVO NECESARIO</span><strong>{currency(result.cashBreakdown.totalCashNeeded)}</strong>
+          </div>
+        </div>
+
+        <div className="print-section">
+          <h2>Métricas ROI</h2>
+          <div className="print-roi-grid">
+            <div>
+              <span>ROI Bruto</span>
+              <strong className={toneClass(result.roi.grossYield, 0.10)}>{percent(result.roi.grossYield)}</strong>
+              <small>Objetivo: {percent(0.10)}</small>
+            </div>
+            <div>
+              <span>ROI Neto</span>
+              <strong className={toneClass(result.roi.netYield, 0.07)}>{percent(result.roi.netYield)}</strong>
+              <small>Objetivo: {percent(0.07)}</small>
+            </div>
+            <div>
+              <span>Cash on Cash</span>
+              <strong className={toneClass(result.roi.cashOnCashRoi, 0.12)}>{percent(result.roi.cashOnCashRoi)}</strong>
+              <small>Objetivo: {percent(0.12)}</small>
+            </div>
+            <div>
+              <span>C2C Neto</span>
+              <strong className={toneClass(result.roi.cashOnCashNetRoi, 0.07)}>{percent(result.roi.cashOnCashNetRoi)}</strong>
+              <small>Objetivo: {percent(0.07)}</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="print-section">
+          <h2>Flujo de caja mensual</h2>
+          <div className="print-kv-grid">
+            <span>Ingreso alquiler</span><strong>{currency(input.monthlyRent)}</strong>
+            <span>Cuota hipoteca</span><strong>-{currency(result.monthlyCosts.mortgage)}</strong>
+            <span>Gastos operativos</span><strong>-{currency(result.monthlyCosts.operating)}</strong>
+            <span>Flujo neto mensual</span><strong>{result.income.monthlyNetCashFlow >= 0 ? "+" : ""}{currency(result.income.monthlyNetCashFlow)}</strong>
+          </div>
+        </div>
+
+        {(targetPrice || targetRent) ? (
+          <div className="print-section">
+            <h2>Objetivo 7% C2C Neto</h2>
+            <div className="print-kv-grid">
+              {targetPrice ? <><span>Precio de compra ideal</span><strong>{currency(targetPrice.targetPrice)}</strong></> : null}
+              {targetRent ? <><span>Renta de alquiler ideal</span><strong>{currency(targetRent.targetRent)}/mes</strong></> : null}
+            </div>
+          </div>
+        ) : null}
+
+        {aeatRef?.found ? (
+          <div className="print-section">
+            <h2>Referencia AEAT {aeatRef.anio}</h2>
+            <div className="print-kv-grid">
+              <span>Municipio</span><strong>{aeatRef.level === "provincia" ? `Provincia (sin dato municipal)` : aeatRef.municipioNombre}</strong>
+              {aeatRef.alquilerMedioMensual != null ? <><span>Alquiler medio mensual</span><strong>{currency(aeatRef.alquilerMedioMensual)}/mes</strong></> : null}
+              {aeatRef.alquilerM2Mensual != null ? <><span>Alquiler €/m²</span><strong>{aeatRef.alquilerM2Mensual} €/m²</strong></> : null}
+              {aeatRef.rentabilidadBrutaPct != null ? <><span>Rentabilidad bruta declarada</span><strong>{aeatRef.rentabilidadBrutaPct}% (sobre valor catastral)</strong></> : null}
+            </div>
+          </div>
+        ) : null}
+
+        {saleRef?.found && saleRef.precioM2 != null ? (() => {
+          const offerPm2 = importResult?.area && importResult.area > 0 && importResult.price
+            ? Math.round(importResult.price / importResult.area) : null;
+          const biasPct = offerPm2 && saleRef.precioM2
+            ? Math.round((offerPm2 / saleRef.precioM2 - 1) * 100) : null;
+          return (
+            <div className="print-section">
+              <h2>Referencia Registradores {saleRef.anio}</h2>
+              <div className="print-kv-grid">
+                <span>Provincia</span><strong>{saleRef.provinciaNombre}</strong>
+                <span>Transacciones reales</span><strong>{fmt(Math.round(saleRef.precioM2))} €/m²</strong>
+                {offerPm2 != null ? <><span>Oferta Idealista</span><strong>{fmt(offerPm2)} €/m²</strong></> : null}
+                {biasPct != null ? <><span>Sesgo oferta</span><strong>{biasPct > 0 ? `+${biasPct}%` : `${biasPct}%`} sobre precio real</strong></> : null}
+              </div>
+            </div>
+          );
+        })() : null}
+
+        <div className="print-footer">
+          Generado con Idealista Brain · {printDate}
+        </div>
+      </div>
 
       {showComparables && importResult?.comparables ? (
         <div className="modal-overlay" onClick={() => setShowComparables(false)}>
