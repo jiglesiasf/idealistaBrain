@@ -31,7 +31,12 @@ type ComparableData = {
   zone: string | null;
 };
 
-const EXTENSION_ID = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
+function resolveExtensionId(): string {
+  const injected = (
+    globalThis as typeof globalThis & { __IDEALISTA_BRAIN_EXTENSION_ID__?: string }
+  ).__IDEALISTA_BRAIN_EXTENSION_ID__;
+  return injected || process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID || "";
+}
 
 type ImportStatus = "idle" | "pinging" | "creating-job" | "dispatching" | "waiting" | "error";
 
@@ -261,8 +266,9 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     setImportError("");
     setImportResult(null);
     const runtime = getChromeRuntime();
+    const extensionId = resolveExtensionId();
 
-    if (!runtime?.sendMessage || !EXTENSION_ID) {
+    if (!runtime?.sendMessage || !extensionId) {
       setImportError("La extensión companion no está disponible en este navegador.");
       setImportStatus("error");
       return;
@@ -271,7 +277,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     setImportStatus("pinging");
     const ping = await new Promise<{ ok: boolean; error?: string }>((r) => {
       try {
-        runtime.sendMessage!(EXTENSION_ID, { type: "IDEALISTA_BRAIN_PING" }, (res) => {
+        runtime.sendMessage!(extensionId, { type: "IDEALISTA_BRAIN_PING" }, (res) => {
           if (runtime.lastError?.message) {
             r({ ok: false, error: normalizeError(runtime.lastError.message) });
           } else if (!res?.ok) {
@@ -324,7 +330,7 @@ export function PropertyCalculator({ initialValues, initialIdealistaUrl }: { ini
     const dispatched = await new Promise<{ ok: boolean; error?: string }>((r) => {
       try {
         runtime.sendMessage!(
-          EXTENSION_ID,
+          extensionId,
           { type: "IDEALISTA_BRAIN_EXECUTE_JOB", payload: dispatch },
           (res) => {
             if (runtime.lastError?.message) {

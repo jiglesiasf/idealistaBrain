@@ -45,6 +45,17 @@
         "content-script.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://localhost/*",
+        "https://idealista-brain.vercel.app/*"
+      ],
+      "js": ["inject-id.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ]
 }

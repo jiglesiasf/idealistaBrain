@@ -37,8 +37,15 @@ export function normalizeCompanionRuntimeError(message?: string) {
   return message;
 }
 
+function resolveExtensionId(): string {
+  const injected = (
+    globalThis as typeof globalThis & { __IDEALISTA_BRAIN_EXTENSION_ID__?: string }
+  ).__IDEALISTA_BRAIN_EXTENSION_ID__;
+  return injected || process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID || "";
+}
+
 export async function getCompanionStatus() {
-  const extensionId = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
+  const extensionId = resolveExtensionId();
   const runtime = getChromeRuntime();
 
   if (!extensionId) {
@@ -106,7 +113,7 @@ export async function pingCompanion() {
 }
 
 export async function dispatchToCompanion(payload: CreateJobResponse["dispatch"]) {
-  const extensionId = process.env.NEXT_PUBLIC_COMPANION_EXTENSION_ID ?? "";
+  const extensionId = resolveExtensionId();
   const runtime = getChromeRuntime();
 
   if (!extensionId) {
