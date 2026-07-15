@@ -38,6 +38,10 @@ export function normalizeCompanionRuntimeError(message?: string) {
 }
 
 function resolveExtensionId(): string {
+  if (typeof sessionStorage !== "undefined") {
+    const stored = sessionStorage.getItem("__idealista_brain_ext_id__");
+    if (stored) return stored;
+  }
   const injected = (
     globalThis as typeof globalThis & { __IDEALISTA_BRAIN_EXTENSION_ID__?: string }
   ).__IDEALISTA_BRAIN_EXTENSION_ID__;

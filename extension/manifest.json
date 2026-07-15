@@ -54,8 +54,7 @@
         "https://idealista-brain.vercel.app/*"
       ],
       "js": ["inject-id.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
+      "run_at": "document_start"
     }
   ]
 }
