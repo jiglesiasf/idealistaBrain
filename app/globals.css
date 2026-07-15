@@ -2866,8 +2866,130 @@ button {
   }
 }
 
-    text-align: center;
+/* ─── Print / PDF ──────────────────────────────────────────────────── */
+
+.calc-print-report {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
   }
+
+  .calc-print-report,
+  .calc-print-report * {
+    visibility: visible;
+  }
+
+  .calc-print-report {
+    display: block;
+    position: absolute;
+    inset: 0;
+    padding: 24px 32px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 10pt;
+    color: #111;
+    background: white;
+  }
+
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2px solid #111;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+  }
+
+  .print-header h1 {
+    font-size: 15pt;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .print-date {
+    font-size: 9pt;
+    color: #555;
+    margin: 0;
+  }
+
+  .print-section {
+    margin-bottom: 14px;
+    break-inside: avoid;
+  }
+
+  .print-section h2 {
+    font-size: 10pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+    margin: 0 0 6px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+  }
+
+  .print-url {
+    display: block;
+    font-size: 8.5pt;
+    color: #0066cc;
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+
+  .print-kv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 16px;
+    font-size: 9pt;
+  }
+
+  .print-kv-grid span {
+    color: #555;
+  }
+
+  .print-kv-grid strong {
+    font-weight: 600;
+    color: #111;
+  }
+
+  .print-roi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .print-roi-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  .print-roi-grid > div span {
+    font-size: 8pt;
+    color: #555;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .print-roi-grid > div strong {
+    font-size: 14pt;
+    font-weight: 700;
+  }
+
+  .print-roi-grid > div small {
+    font-size: 8pt;
+    color: #888;
+  }
+
+  .print-roi-grid .tone-green { color: #18794e; }
+  .print-roi-grid .tone-yellow { color: #ad5700; }
+  .print-roi-grid .tone-red { color: #c82b2b; }
 
   .print-footer {
     margin-top: 20px;
